@@ -238,13 +238,23 @@ def _normalized_sensitivity(fairness: Dict[str, Any]) -> float:
     top_pairs = fairness.get("topDisparityPairs") or []
     raw_sensitivity = fairness.get("rawRaceSensitivity")
 
+    inferred_score = None
+    if top_pairs:
+        inferred_score = 100.0 * float(top_pairs[0].get("meanGap", 0.0))
+
+    if inferred_score is not None and inferred_score > 0.0:
+        # If the primary value still looks like a fractional 0-1 score, use the top-pair-derived raw scale.
+        if sensitivity <= 1.0 and inferred_score > 1.0:
+            return inferred_score
+        if isinstance(raw_sensitivity, (int, float)) and float(raw_sensitivity) <= 1.0 and inferred_score > 1.0:
+            return inferred_score
+
     if isinstance(raw_sensitivity, (int, float)):
         raw_value = float(raw_sensitivity)
         if raw_value > 0.0:
             return raw_value
 
-    if top_pairs:
-        inferred_score = 100.0 * float(top_pairs[0].get("meanGap", 0.0))
+    if inferred_score is not None:
         if inferred_score > 0.0:
             return inferred_score
 
@@ -263,12 +273,12 @@ def _sensitivity_indicator(sensitivity: float) -> str:
 
 def _risk_band_label(sensitivity: float) -> str:
     if sensitivity < 1.2:
-        return "Low modeled disparity risk"
+        return "Low-Modeled Disparity Risk"
     if sensitivity < 2.8:
-        return "Moderate modeled disparity risk"
+        return "Moderate-Modeled Disparity Risk"
     if sensitivity < 4.5:
-        return "Elevated modeled disparity risk"
-    return "High modeled disparity risk"
+        return "Elevated-Modeled Disparity Risk"
+    return "High-Modeled Disparity Risk"
 
 
 def _top_pair_interpretation(top_pair: Dict[str, Any] | None, sensitivity: float) -> str:
@@ -284,18 +294,9 @@ def _top_pair_interpretation(top_pair: Dict[str, Any] | None, sensitivity: float
     race_b = str(races[1])
     other = race_b if favored == race_a else race_a
 
-    if sensitivity >= 4.5:
-        tendency = "strongly tend to prefer"
-    elif sensitivity >= 2.8:
-        tendency = "often prefer"
-    elif sensitivity >= 1.2:
-        tendency = "sometimes prefer"
-    else:
-        tendency = "slightly tend to prefer"
-
     return (
-        f"A race disparity score of {sensitivity:.1f} means your modeled decisions are more likely to favor one race over another when applicants have similar profiles. "
-        f"In this highest-gap comparison, you {tendency} admitting {favored} applicants over {other} applicants."
+        f"The largest average gap was {favored} vs {other}, with {favored} favored on average. "
+        f"This means that your modeled decisions are more {sensitivity:.1f}% likely to favor admitting {favored} applicants over {other} applicants when they have similar profiles."
     )
 
 
@@ -549,7 +550,7 @@ def coach_insight():
         {
             "seed": merged_seed,
             "valueWeights": merged_seed.get("valueWeights", {}),
-            "raceSensitivity": fairness.get("raceSensitivity", 0.0),
+            "raceSensitivity": _normalized_sensitivity(fairness),
             "counterfactualChanges": fairness.get("counterfactualChanges", []),
             "suggestedSeed": target.get("suggestedSeed"),
             "suggestedValueWeights": target.get("suggestedValueWeights"),
@@ -610,56 +611,12 @@ def analysis_dialogue():
 
     risk_band = _risk_band_label(sensitivity)
 
-    summary_prompt = (
-        "Provide a 4-5 sentence plain-English summary of this admissions fairness result. "
-        "Start with the risk band and race disparity score only. "
-        "Do not use point-gap values or 'percentage points' language. "
-        "Then include one explicit sentence that says: for applicants with similar profiles, which race is favored over which race in the highest-gap pair. "
-        "Then mention likely value-priority drivers.\n"
-        f"Risk band: {risk_band}\n"
-        f"Race disparity score: {sensitivity:.1f}\n"
-        f"Top pair statement: {top_pair_text}\n"
-        f"Explicit interpretation sentence to include: {top_pair_interpretation or 'No explicit pairwise preference statement available.'}\n"
-        f"Merit-Based Selection: {summary['merit']:.1f}%\n"
-        f"Family Financial Context: {summary['family']:.1f}%\n"
-        f"School Resource Context: {summary['school']:.1f}%\n"
-        f"Community Responsibility Context: {summary['community']:.1f}%"
+    explanation = (
+        f"The Risk Band you fall in is the {risk_band}, because your Race disparity score is {sensitivity:.1f}. "
+        f"{top_pair_text} "
+        f"This means that your modeled decisions are more {sensitivity:.1f}% more likely to favor admitting {top_pairs[0].get('favoredRace', 'one race') if top_pairs else 'one race'} applicants over {top_pairs[0].get('races', ['the other race'])[1] if top_pairs and len(top_pairs[0].get('races', [])) == 2 else 'the other race'} applicants when they have similar profiles. "
+        f"Your current weighting is Merit {summary['merit']:.1f}%, Family {summary['family']:.1f}%, School {summary['school']:.1f}%, and Community {summary['community']:.1f}%."
     )
-    explanation = _llm_chat_response(
-        "You are a careful, non-judgmental admissions analytics explainer.",
-        summary_prompt,
-        temperature=0.3,
-        max_tokens=260,
-    ) or (
-        f"Risk band is {risk_band}. Race disparity score is {sensitivity:.1f}. {top_pair_text} "
-        f"{top_pair_interpretation} "
-        f"Your current weighting is Merit {summary['merit']:.1f}%, Family {summary['family']:.1f}%, "
-        f"School {summary['school']:.1f}%, Community {summary['community']:.1f}%."
-    )
-
-    explanation = re.sub(
-        r"(Race disparity score is\s*)(\d+(?:\.\d+)?)",
-        f"\\g<1>{sensitivity:.1f}",
-        str(explanation),
-        flags=re.IGNORECASE,
-    )
-    explanation = re.sub(
-        r"(Race disparity score:\s*)(\d+(?:\.\d+)?)",
-        f"\\g<1>{sensitivity:.1f}",
-        str(explanation),
-        flags=re.IGNORECASE,
-    )
-    explanation = re.sub(
-        r"(race disparity risk score:\s*)(\d+(?:\.\d+)?)",
-        f"\\g<1>{sensitivity:.1f}",
-        str(explanation),
-        flags=re.IGNORECASE,
-    )
-
-    if top_pair_interpretation and top_pair_interpretation not in explanation:
-        explanation = f"{explanation} {top_pair_interpretation}".strip()
-
-    explanation = f"{explanation}"
     floor_reached = False
 
     return jsonify(

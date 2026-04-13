@@ -457,15 +457,15 @@
 
     function classifyBias(sensitivity) {
         if (sensitivity < 1.2) {
-            return "Low modeled disparity risk";
+            return "Low-Modeled Disparity Risk";
         }
         if (sensitivity < 2.8) {
-            return "Moderate modeled disparity risk";
+            return "Moderate-Modeled Disparity Risk";
         }
         if (sensitivity < 4.5) {
-            return "Elevated modeled disparity risk";
+            return "Elevated-Modeled Disparity Risk";
         }
-        return "High modeled disparity risk";
+        return "High-Modeled Disparity Risk";
     }
 
     function rescaleDisparityScore(rawScore) {
@@ -479,23 +479,31 @@
         }
         const favored = String(topPair.favoredRace || "tie");
         if (favored === "tie") {
-            return "For applicants with similar profiles, this top comparison pair appears roughly balanced.";
+            return "The largest average gap was balanced across the compared races.";
         }
 
         const raceA = String(topPair.races[0]);
         const raceB = String(topPair.races[1]);
         const other = favored === raceA ? raceB : raceA;
 
-        let tendency = "slightly tend to prefer";
-        if (sensitivity >= 4.5) {
-            tendency = "strongly tend to prefer";
-        } else if (sensitivity >= 2.8) {
-            tendency = "often prefer";
-        } else if (sensitivity >= 1.2) {
-            tendency = "sometimes prefer";
-        }
+        return `The largest average gap was ${raceA} vs ${raceB}, with ${favored} favored on average.`;
+    }
 
-        return `A race disparity score of ${Number(sensitivity || 0).toFixed(1)} means your modeled decisions are more likely to favor one race over another when applicants have similar profiles. In this highest-gap comparison, you ${tendency} admitting ${favored} applicants over ${other} applicants.`;
+    function buildWhereYouStandExplanation(topPair, score, weights) {
+        const band = classifyBias(score);
+        const value = Number(score || 0).toFixed(1);
+        const favored = topPair && topPair.favoredRace ? String(topPair.favoredRace) : "one race";
+        const races = topPair && Array.isArray(topPair.races) ? topPair.races : [];
+        const other = races.length === 2 ? String(races[0] === favored ? races[1] : races[0]) : "the other race";
+        const gapText = topPair && Array.isArray(topPair.races) && topPair.races.length === 2
+            ? `The largest average gap was ${String(topPair.races[0])} vs ${String(topPair.races[1])}, with ${favored} favored on average.`
+            : "The largest average gap was not stable enough to identify a single pair.";
+        return (
+            `The Risk Band you fall in is the ${band}, because your Race disparity score is ${value}. ` +
+            `${gapText} ` +
+            `This means that your modeled decisions are more ${value}% more likely to favor admitting ${favored} applicants over ${other} applicants when they have similar profiles. ` +
+            `Your current weighting is Merit ${weights.merit.toFixed(1)}%, Family ${weights.family.toFixed(1)}%, School ${weights.school.toFixed(1)}%, and Community ${weights.community.toFixed(1)}%.`
+        );
     }
 
     function normalizeExplanationScore(text, score) {
@@ -646,20 +654,11 @@
         
         const fallbackSensitivity = Number(data.sensitivity || 0);
         const rows = data.topDisparityPairs || [];
+        const currentWeights = normalizeState(state);
 
-        // Ensure the explicit pairwise interpretation is visible even if backend text is stale.
-        let explanation = String(data.explanation || "No summary available.");
-        if (rows.length) {
-            const topRawScore = 100 * Number(rows[0].meanGap || 0);
-            const topDisplayScore = rescaleDisparityScore(topRawScore);
-            explanation = normalizeExplanationScore(explanation, topDisplayScore);
-            const explicitSentence = buildTopPairInterpretation(rows[0], topDisplayScore);
-            if (explicitSentence && !explanation.includes(explicitSentence)) {
-                explanation = `${explanation} ${explicitSentence}`.trim();
-            }
-        } else {
-            explanation = normalizeExplanationScore(explanation, fallbackSensitivity);
-        }
+        const topRawScore = rows.length ? 100 * Number(rows[0].meanGap || 0) : fallbackSensitivity;
+        const topDisplayScore = rescaleDisparityScore(topRawScore);
+        const explanation = buildWhereYouStandExplanation(rows[0] || null, topDisplayScore, currentWeights);
 
         const tbody = document.getElementById("pairRows");
         tbody.innerHTML = "";

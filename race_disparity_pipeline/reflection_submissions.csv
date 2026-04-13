@@ -1,0 +1,3 @@
+created_at,session_id,surprise_level,seen_similar_tool_before,usefulness_rating,recommend_rating,change_intent_rating,reflection_text,submitted_at
+2026-04-13T04:33:00.740510+00:00,manual-test-session,mostly-unexpected,no,5,4,5,terminal api test after restart,2026-04-12T12:10:00Z
+2026-04-13T04:33:49.225516+00:00,7f896f64-0fb8-4c3d-9f14-6afc7415dd4b,mostly-unexpected,no,4,4,4,N/A,2026-04-13T04:33:49.187Z

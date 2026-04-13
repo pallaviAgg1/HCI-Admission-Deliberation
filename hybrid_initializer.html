@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid Initializer | Admissions Value Compass</title>
+    <style>
+        :root {
+            --bg-a: #eef6ff;
+            --bg-b: #fef7e8;
+            --ink: #1c2431;
+            --muted: #5d6c83;
+            --card: #ffffff;
+            --line: #d6dfeb;
+            --accent: #0f766e;
+            --accent-2: #c2410c;
+            --good: #166534;
+            --warn: #9a3412;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            color: var(--ink);
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle at 10% 10%, var(--bg-a), transparent 45%), radial-gradient(circle at 90% 20%, var(--bg-b), transparent 50%), #f4f7fb;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .shell {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(23, 35, 62, 0.12);
+            overflow: hidden;
+        }
+
+        .flow-hidden {
+            display: none;
+        }
+
+        .hero {
+            padding: 28px 30px;
+            border-bottom: 1px solid var(--line);
+            background: linear-gradient(110deg, #ecfeff, #fff7ed);
+        }
+
+        .hero h1 { margin: 0 0 8px 0; font-size: 1.55rem; }
+        .hero p { margin: 0; color: var(--muted); }
+
+        .content { padding: 24px 30px 30px; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(240px, 1fr));
+            gap: 18px;
+        }
+
+        .card {
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: #fbfcfe;
+            padding: 16px;
+        }
+
+        .card h3 { margin: 0 0 8px 0; }
+
+        .sub {
+            color: var(--muted);
+            font-size: 0.92rem;
+            margin-bottom: 12px;
+        }
+
+        textarea, select {
+            width: 100%;
+            border: 1px solid #c9d5e7;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 0.95rem;
+            background: #fff;
+        }
+
+        textarea { min-height: 90px; resize: vertical; }
+
+        .q-block {
+            margin-top: 16px;
+            border: 1px solid #c8d6ea;
+            border-radius: 12px;
+            padding: 14px;
+            background: #f9fbff;
+        }
+
+        .statement-toggle {
+            margin-top: 6px;
+            border: 1px solid #c9d5e7;
+            border-radius: 999px;
+            padding: 6px 10px;
+            background: #eef5ff;
+            color: #1e3a5f;
+            font-size: 0.83rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .statement-box {
+            margin-top: 8px;
+            border: 1px solid #d6dfeb;
+            border-radius: 10px;
+            padding: 10px;
+            background: #f7fbff;
+            color: #344256;
+            font-size: 0.88rem;
+            line-height: 1.45;
+            display: none;
+        }
+
+        .resume-box {
+            margin-top: 8px;
+            border: 1px solid #d6dfeb;
+            border-radius: 10px;
+            padding: 10px;
+            background: #f7fbff;
+            color: #344256;
+            font-size: 0.88rem;
+            line-height: 1.45;
+            display: none;
+            white-space: pre-line;
+        }
+
+        .resume-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.72);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 22px;
+            z-index: 120;
+        }
+
+        .resume-modal.hidden {
+            display: none;
+        }
+
+        .resume-sheet {
+            width: min(920px, 100%);
+            max-height: calc(100vh - 44px);
+            overflow: auto;
+            background: #fdfbf7;
+            border: 1px solid #d7d0c2;
+            border-radius: 18px;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+            padding: 22px 26px 26px;
+        }
+
+        .resume-paper {
+            background: #ffffff;
+            border: 1px solid #e3ded3;
+            border-radius: 14px;
+            padding: 28px 30px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+            font-family: Georgia, "Times New Roman", serif;
+            color: #1f2937;
+        }
+
+        .resume-header {
+            text-align: center;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #d8d2c8;
+        }
+
+        .resume-name {
+            font-size: 1.7rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            margin: 0 0 4px;
+        }
+
+        .resume-contact {
+            font-size: 0.88rem;
+            color: #51606f;
+        }
+
+        .resume-section {
+            margin-bottom: 16px;
+        }
+
+        .resume-section h4 {
+            margin: 0 0 8px;
+            font-size: 0.95rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #10243d;
+        }
+
+        .resume-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: baseline;
+            margin-bottom: 4px;
+            font-size: 0.95rem;
+        }
+
+        .resume-role {
+            font-weight: 700;
+        }
+
+        .resume-meta {
+            color: #51606f;
+            font-size: 0.9rem;
+            text-align: right;
+        }
+
+        .resume-bullets {
+            margin: 6px 0 0 18px;
+            padding: 0;
+        }
+
+        .resume-bullets li {
+            margin-bottom: 6px;
+        }
+
+        .resume-close {
+            position: sticky;
+            top: 0;
+            float: right;
+            margin-bottom: 10px;
+            border-radius: 999px;
+            padding: 8px 14px;
+            background: #e7edf6;
+            color: #1e3a5f;
+            font-weight: 700;
+            z-index: 1;
+        }
+
+        .card {
+            position: relative;
+            padding-bottom: 52px;
+        }
+
+        .score-help-button {
+            position: absolute;
+            right: 12px;
+            bottom: 12px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 1px solid #b8c6d8;
+            background: #edf3fa;
+            color: #1f3a5f;
+            font-weight: 700;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .score-help-button:hover {
+            background: #dfe9f6;
+        }
+
+        .score-help-popover {
+            position: absolute;
+            right: 12px;
+            bottom: 46px;
+            width: min(360px, calc(100% - 24px));
+            background: #ffffff;
+            border: 1px solid #cdd9e8;
+            border-radius: 12px;
+            box-shadow: 0 16px 30px rgba(15, 23, 42, 0.14);
+            padding: 12px;
+            font-size: 0.84rem;
+            line-height: 1.45;
+            color: #334155;
+            display: none;
+            z-index: 4;
+        }
+
+        .score-help-popover strong {
+            color: #10243d;
+        }
+
+        .score-help-popover ul {
+            margin: 8px 0 0 18px;
+            padding: 0;
+        }
+
+        .score-help-popover li {
+            margin-bottom: 6px;
+        }
+
+        .decision-label {
+            display: block;
+            margin-top: 10px;
+        }
+
+        .q-prompt { margin: 0 0 10px 0; font-weight: 600; }
+
+        .q-row {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .actions {
+            margin-top: 18px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: none;
+            border-radius: 999px;
+            padding: 10px 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-secondary { background: #dde7f7; color: #1e3a5f; }
+        .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+        .status {
+            margin-top: 14px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #ecfeff;
+            border: 1px solid #99f6e4;
+            color: #155e75;
+            display: none;
+        }
+
+        .error {
+            background: #fff7ed;
+            border-color: #fdba74;
+            color: var(--warn);
+        }
+
+        .summary {
+            margin-top: 16px;
+            border: 1px dashed #9bb4d5;
+            border-radius: 12px;
+            padding: 12px;
+            display: none;
+            background: #f7fbff;
+        }
+
+        .study-primer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.68);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
+        }
+
+        .study-primer-card {
+            max-width: 760px;
+            width: 100%;
+            background: #fffdf9;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
+            padding: 24px;
+        }
+
+        .study-primer-card h2 {
+            margin: 0 0 10px;
+            font-size: 1.35rem;
+        }
+
+        .study-primer-card p {
+            margin: 0 0 10px;
+            color: #374151;
+            line-height: 1.55;
+        }
+
+        .primer-callout {
+            border-left: 4px solid var(--accent);
+            background: #f8fafc;
+            padding: 12px 14px;
+            border-radius: 10px;
+            margin: 12px 0;
+            color: #334155;
+        }
+
+        .primer-actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .primer-btn {
+            border: none;
+            border-radius: 999px;
+            padding: 10px 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .primer-btn.primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .primer-btn.secondary {
+            background: #e7edf6;
+            color: #1f2937;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .summary code { color: #0f172a; }
+
+        .vector-box {
+            margin-top: 10px;
+            background: #f7fbff;
+            color: var(--ink);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 12px;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            white-space: normal;
+            font-size: 0.92rem;
+            line-height: 1.45;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 860px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div id="studyPrimer" class="study-primer-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="studyPrimerTitle">
+        <div class="study-primer-card">
+            <h2 id="studyPrimerTitle">Study primer: what you will do</h2>
+            <p>You will review twelve synthetic applicants and make an <strong>admit</strong> or <strong>reject</strong> decision for each one. Please use the profile details, statement, and your own judgment to decide how you would evaluate them.</p>
+            <p>The system will then summarize your overall admissions stance, ask a few follow-up questions, and estimate whether your decisions change in the race-sensitivity simulation.</p>
+            <div class="primer-callout">
+                For this study, <strong>race</strong> is the only socially contested attribute being examined. The simulation keeps every other applicant detail fixed and checks whether changing race alone would shift your decisions or scores.
+            </div>
+            <p>This is a reflection tool, not a policy test. There are no right answers, but we do ask that you complete all twelve decisions before moving on.</p>
+            <div class="primer-actions">
+                <button type="button" id="primerContinueBtn" class="primer-btn primary">Continue to the twelve applicants</button>
+            </div>
+        </div>
+    </div>
+    <main id="initializerFlow" class="shell flow-hidden">
+        <section class="hero">
+            <h1>Admissions Warm-Up: 12-Applicant Hybrid Initializer</h1>
+            <p>Evaluate twelve applicants, explain your reasoning, run adaptive clarifications, inspect the computed value vector, and preview race disparity signals.</p>
+        </section>
+        <section class="content">
+            <div id="applicantsGrid" class="grid"></div>
+
+            <section class="card" style="margin-top: 18px;">
+                <h3>Overall Rationale</h3>
+                <p class="sub">Describe your overarching admissions philosophy in 2-4 sentences.</p>
+                <textarea id="overallRationale" placeholder="Example: I prioritize long-term academic potential while adjusting for unequal opportunity..." style="min-height: 120px;"></textarea>
+                <p id="backendStatus" class="sub" style="margin: 10px 0 0; display: none;"></p>
+                <div class="actions">
+                    <button id="startBtn" class="btn-primary">Generate Clarification Questions</button>
+                </div>
+            </section>
+
+            <section id="questionsSection" class="card" style="margin-top: 18px; display: none;">
+                <h3>Adaptive Pairwise Clarifications</h3>
+                <p class="sub">Answer each prompt to reduce ambiguity before seeding the graph.</p>
+                <div id="questionsHost"></div>
+                <div class="actions">
+                    <button id="finalizeBtn" class="btn-primary">Submit Pairwise</button>
+                    <button id="openGraphBtn" class="btn-secondary" style="display:none;">Open Trade-Off Graph</button>
+                </div>
+            </section>
+
+            <div id="statusBox" class="status"></div>
+            <div id="summaryBox" class="summary">
+                <div id="summaryHeadline"></div>
+                <div id="vectorCode" class="vector-box"></div>
+                <div id="traceExplain" style="margin-top:10px; font-size:0.9rem; color:#1e3a5f;"></div>
+            </div>
+        </section>
+    </main>
+
+    <div id="resumeModal" class="resume-modal hidden" role="dialog" aria-modal="true" aria-labelledby="resumeModalTitle">
+        <div class="resume-sheet">
+            <button type="button" id="resumeCloseBtn" class="resume-close">Close</button>
+            <div id="resumePaper" class="resume-paper"></div>
+        </div>
+    </div>
+
+<script>
+(function () {
+    const API_BASE = (window.location.protocol === "http:" || window.location.protocol === "https:")
+        ? window.location.origin
+        : "http://127.0.0.1:5050";
+
+    const initializerFlow = document.getElementById("initializerFlow");
+    const applicantsGrid = document.getElementById("applicantsGrid");
+    const studyPrimer = document.getElementById("studyPrimer");
+    const primerContinueBtn = document.getElementById("primerContinueBtn");
+    const resumeModal = document.getElementById("resumeModal");
+    const resumeCloseBtn = document.getElementById("resumeCloseBtn");
+    const resumePaper = document.getElementById("resumePaper");
+    const startBtn = document.getElementById("startBtn");
+    const finalizeBtn = document.getElementById("finalizeBtn");
+    const openGraphBtn = document.getElementById("openGraphBtn");
+    const questionsSection = document.getElementById("questionsSection");
+    const questionsHost = document.getElementById("questionsHost");
+    const statusBox = document.getElementById("statusBox");
+    const summaryBox = document.getElementById("summaryBox");
+    const summaryHeadline = document.getElementById("summaryHeadline");
+    const vectorCode = document.getElementById("vectorCode");
+    const traceExplain = document.getElementById("traceExplain");
+    const backendStatus = document.getElementById("backendStatus");
+
+    const FALLBACK_APPLICANTS = [
+        {
+            label: "A",
+            name: "R. Coleman",
+            profile: {
+                gpa: 3.96,
+                testScore: 1560,
+                research: 4,
+                leadership: 5,
+                adversity: 2,
+                communityImpact: 3,
+                firstGen: false,
+                raceGroup: "White",
+                reviewComplexity: 3
+            },
+            summary: "High metrics, limited contextual adversity, strong but narrower extracurricular depth.",
+            resume: "Education: Advanced STEM track; AP Calculus, AP Physics, AP Computer Science\nExperience: Independent math team preparation, robotics club member, weekend tutoring assistant\nProjects: Coding exercises, engineering reading list, academic contest practice\nActivities: Science bowl, school honors society\nNotes: Strong academic focus, limited formal leadership or research placement"
+        },
+        {
+            label: "B",
+            name: "M. Alvarez",
+            profile: {
+                gpa: 3.42,
+                testScore: 1280,
+                research: 8,
+                leadership: 7,
+                adversity: 8,
+                communityImpact: 9,
+                firstGen: true,
+                raceGroup: "Latinx",
+                reviewComplexity: 7
+            },
+            summary: "Moderate metrics, first-gen, high research and mentorship in under-resourced settings.",
+            resume: "Education: Public high school with frequent schedule disruptions\nExperience: Library tutoring organizer, bilingual volunteer coordinator, part-time shift work\nLeadership: Managed a forty-student volunteer network, translated aid forms, mentored younger students\nService: Neighborhood support events, family advocacy, youth tutoring\nNotes: Heavy real-world responsibility with strong organizing experience and persistence"
+        },
+        {
+            label: "C",
+            name: "T. Washington",
+            profile: {
+                gpa: 3.70,
+                testScore: 1420,
+                research: 6,
+                leadership: 9,
+                adversity: 6,
+                communityImpact: 8,
+                firstGen: false,
+                raceGroup: "Black",
+                reviewComplexity: 6
+            },
+            summary: "Balanced metrics, exceptional campus leadership, substantial community impact.",
+            resume: "Education: Solid college-prep curriculum with family caregiving demands\nExperience: Peer mentoring founder, feeder-school outreach coordinator, home responsibility manager\nLeadership: School mentoring circle founder, cross-campus organizer, home coordinator\nService: Policy interest, access-barrier advocacy, transportation and clinic access awareness\nNotes: Leadership and civic initiative are central to the record"
+        },
+        {
+            label: "D",
+            name: "S. Rahman",
+            profile: {
+                gpa: 3.58,
+                testScore: 1360,
+                research: 7,
+                leadership: 6,
+                adversity: 5,
+                communityImpact: 6,
+                firstGen: false,
+                raceGroup: "Middle Eastern",
+                reviewComplexity: 5
+            },
+            summary: "Strong lab contributions and persistence, mid-range test profile.",
+            resume: "Education: Strong science and math sequence with community-college lab access\nExperience: Air-quality sensor prototype builder, weekend lab volunteer, data analysis assistant\nResearch: Prototype testing, instrument calibration, environmental data logging\nLeadership: Mostly technical contribution rather than large-group coordination\nNotes: Exceptional research depth with modest public-facing leadership"
+        },
+        {
+            label: "E",
+            name: "A. Begay",
+            profile: {
+                gpa: 3.34,
+                testScore: 1240,
+                research: 7,
+                leadership: 8,
+                adversity: 9,
+                communityImpact: 9,
+                firstGen: true,
+                raceGroup: "Indigenous",
+                reviewComplexity: 8
+            },
+            summary: "Lower test metrics but very high adversity resilience and civic leadership.",
+            resume: "Education: Rural school environment with limited internet and lab access\nExperience: Youth water-access campaign leader, elder clinic transport coordinator, home support helper\nLeadership: Community organizer, volunteer scheduler, local problem solver\nService: High-touch community care, transportation logistics, access advocacy\nNotes: Very strong leadership under hardship; little opportunity for formal research"
+        },
+        {
+            label: "F",
+            name: "Y. Chen",
+            profile: {
+                gpa: 3.88,
+                testScore: 1500,
+                research: 9,
+                leadership: 4,
+                adversity: 3,
+                communityImpact: 4,
+                firstGen: false,
+                raceGroup: "Asian",
+                reviewComplexity: 4
+            },
+            summary: "Very strong academics and research, lower non-academic context indicators.",
+            resume: "Education: Rigorous advanced coursework with independent technical projects\nExperience: ML project builder, university-affiliated research intern, coding workshop instructor\nResearch: Independent experiments, internship deliverables, technical documentation\nLeadership: Workshop lead, peer mentor, student organizer\nNotes: Strong technical research plus emerging service leadership"
+        }
+    ];
+
+    let sessionId = null;
+    let questions = [];
+    let finalPayload = null;
+    let backendReachable = false;
+
+    const RESUME_TEMPLATES = {
+        A: {
+            contact: "R. Coleman | r.coleman@email.com | GitHub available on request",
+            location: "Dallas, TX",
+            education: "Lincoln STEM High School | Expected May 2026 | GPA: 3.96/4.00\nRelevant Coursework: AP Calculus, AP Physics, AP Computer Science, Multivariable Calculus, Discrete Math",
+            experience: [
+                { title: "Independent Math Team Prep", org: "Student Researcher", dates: "2024 - 2026", bullets: ["Completed weekly problem sets and peer review sessions for regional math competition prep.", "Built a disciplined study routine and shared practice materials with teammates."] },
+                { title: "Robotics Club", org: "Member", dates: "2023 - 2026", bullets: ["Supported build sessions and helped test control logic for a small autonomous prototype."] },
+                { title: "Tutoring Volunteer", org: "Weekend Assistant", dates: "2024 - 2026", bullets: ["Helped underclassmen with algebra and introductory physics." ] },
+            ],
+            activities: ["Science Bowl competitor", "Math Team", "Honor Society member", "Independent coding and engineering reading"],
+            honors: ["AP Scholar with Distinction", "Science department academic recognition"],
+            skills: ["Python", "Java", "Problem solving", "Quantitative analysis", "Study planning"]
+        },
+        B: {
+            contact: "M. Alvarez | m.alvarez@email.com | LinkedIn available on request",
+            location: "Houston, TX",
+            education: "Northside Early College High School | Expected May 2026 | GPA: 3.28/4.00\nRelevant Coursework: AP English Language, AP Statistics, Biology, Algebra II, Dual Credit College Readiness",
+            experience: [
+                { title: "Library Tutoring Organizer", org: "Neighborhood Public Library", dates: "2023 - 2026", bullets: ["Recruited and coordinated volunteer tutors for middle school students after school.", "Built bilingual sign-up sheets and schedule reminders for families."] },
+                { title: "Bilingual Volunteer Coordinator", org: "Local Service Network", dates: "2024 - 2026", bullets: ["Managed a volunteer group of roughly forty students across weekend service shifts."] },
+                { title: "Part-Time Support Work", org: "Family and Community", dates: "2023 - 2026", bullets: ["Balanced paid shifts with school and caregiving responsibilities."] },
+            ],
+            activities: ["Youth tutoring", "Family advocacy", "Community event planning", "Translation support"],
+            honors: ["Library program leadership recognition", "Community service acknowledgment"],
+            skills: ["Spanish", "Team coordination", "Public speaking", "Translation", "Community outreach"]
+        },
+        C: {
+            contact: "T. Washington | t.washington@email.com | LinkedIn available on request",
+            location: "Atlanta, GA",
+            education: "Southside College Preparatory Academy | Expected May 2026 | GPA: 3.61/4.00\nRelevant Coursework: AP U.S. History, AP Government, AP Literature, Statistics, Biology",
+            experience: [
+                { title: "Peer Mentoring Founder", org: "School Peer Mentoring Circle", dates: "2023 - 2026", bullets: ["Launched a school mentoring circle and expanded it to three feeder middle schools.", "Created recurring support sessions for younger students." ] },
+                { title: "Feeder-School Outreach Coordinator", org: "Student Support Program", dates: "2024 - 2026", bullets: ["Organized tutoring visits and student support sessions for younger learners."] },
+                { title: "Home Care Coordinator", org: "Family Responsibilities", dates: "2022 - 2026", bullets: ["Balanced caregiving responsibilities with school leadership and academic work."] },
+            ],
+            activities: ["Student government", "Community advocacy", "Transportation access volunteering"],
+            honors: ["Leadership award from counseling office", "Community service distinction"],
+            skills: ["Leadership", "Event coordination", "Public speaking", "Advocacy writing", "Mentoring"]
+        },
+        D: {
+            contact: "S. Rahman | s.rahman@email.com | GitHub available on request",
+            location: "Austin, TX",
+            education: "Westlake Science Academy | Expected May 2026 | GPA: 3.79/4.00\nRelevant Coursework: AP Chemistry, AP Physics C, AP Calculus BC, Computer Science A, Statistics",
+            experience: [
+                { title: "Student Research Assistant", org: "Community College Environmental Lab", dates: "2024 - 2026", bullets: ["Built and tested a low-cost air-quality sensor prototype for neighborhood monitoring.", "Logged calibration data, cleaned measurements, and summarized trends for faculty review."] },
+                { title: "Weekend Lab Volunteer", org: "Community Lab", dates: "2023 - 2026", bullets: ["Supported equipment setup, sample tracking, and documentation for small experiments."] },
+            ],
+            activities: ["Science Olympiad", "Independent prototype development", "Environmental data project support"],
+            honors: ["School science research recognition", "Faculty commendation for reliability"],
+            skills: ["Python", "Data analysis", "Instrumentation", "Lab documentation", "Technical writing"]
+        },
+        E: {
+            contact: "A. Begay | a.begay@email.com | LinkedIn available on request",
+            location: "Window Rock, AZ",
+            education: "Diné Community High School | Expected May 2026 | GPA: 3.22/4.00\nRelevant Coursework: English Composition, Algebra II, Biology, Tribal Government, Digital Media",
+            experience: [
+                { title: "Youth Water-Access Campaign Leader", org: "Community Advocacy Initiative", dates: "2023 - 2026", bullets: ["Organized a local campaign to improve reliable water access for families on tribal land."] },
+                { title: "Elder Clinic Transport Coordinator", org: "Volunteer Care Network", dates: "2024 - 2026", bullets: ["Scheduled weekend rides and coordinated volunteer drivers for medical appointments."] },
+                { title: "Home Support Helper", org: "Family Responsibilities", dates: "2022 - 2026", bullets: ["Managed household responsibilities while balancing schoolwork and community obligations."] },
+            ],
+            activities: ["Community organizing", "Volunteer scheduling", "Youth service", "Tribal health advocacy"],
+            honors: ["Community leadership recognition", "Youth civic engagement commendation"],
+            skills: ["Community organizing", "Logistics", "Translation support", "Problem solving", "Resilience"]
+        },
+        F: {
+            contact: "Y. Chen | y.chen@email.com | GitHub available on request",
+            location: "San Jose, CA",
+            education: "Evergreen Collegiate School | Expected May 2026 | GPA: 3.91/4.00\nRelevant Coursework: AP Computer Science A, AP Statistics, AP Calculus BC, Physics C, Linear Algebra",
+            experience: [
+                { title: "Machine Learning Project Builder", org: "Independent Research", dates: "2023 - 2026", bullets: ["Developed small classification and recommendation prototypes for independent study projects.", "Documented experiments and iterated on model behavior across datasets."] },
+                { title: "Research Intern", org: "University-Affiliated Lab", dates: "2024 - 2025", bullets: ["Supported model experiments, documentation, and iterative testing for a faculty mentor."] },
+                { title: "Coding Workshop Instructor", org: "Community Teaching Program", dates: "2024 - 2026", bullets: ["Led free coding sessions for younger students and created starter materials for beginners."] },
+            ],
+            activities: ["Peer mentoring", "School robotics and AI club", "Community coding workshops"],
+            honors: ["Research internship recognition", "Computer science department distinction"],
+            skills: ["Python", "Machine learning", "Research documentation", "Teaching", "Team mentoring"]
+        }
+    };
+
+    function renderApplicantCards(applicants) {
+        applicantsGrid.innerHTML = "";
+        applicants.forEach((applicant) => {
+            const card = document.createElement("article");
+            card.className = "card";
+            card.setAttribute("data-label", applicant.label);
+            const statementText = applicant.personalStatement || "No personal statement available for this applicant.";
+            const researchReason = buildScoreReason(applicant, "research");
+            const leadershipReason = buildScoreReason(applicant, "leadership");
+            const adversityReason = buildScoreReason(applicant, "adversity");
+            const communityReason = buildScoreReason(applicant, "community");
+            const complexityReason = buildScoreReason(applicant, "complexity");
+            card.innerHTML = `
+                <h3>Applicant ${applicant.label}: ${applicant.name}</h3>
+                <button type="button" class="statement-toggle" onclick="toggleStatement('${applicant.label}')">View Personal Statement</button>
+                <div id="statement-${applicant.label}" class="statement-box">${statementText}</div>
+                <button type="button" class="statement-toggle" onclick="openResumeModal('${applicant.label}')">View Resume</button>
+                <label class="decision-label" for="decision-${applicant.label}">Decision</label>
+                <select id="decision-${applicant.label}">
+                    <option value="admit">Admit</option>
+                    <option value="reject">Reject</option>
+                </select>
+                <label for="notes-${applicant.label}">Reasoning Notes</label>
+                <textarea id="notes-${applicant.label}" placeholder="Why did you choose this decision? Mention factors you prioritized."></textarea>
+                <button type="button" class="score-help-button" title="How were these scores set?" aria-label="Explain applicant score rubric" onclick="toggleScoreHelp('${applicant.label}')">?</button>
+                <div id="score-help-${applicant.label}" class="score-help-popover">
+                    <strong>How the 0-10 scores were estimated</strong>
+                    <ul>
+                        <li><strong>Research:</strong> ${researchReason}</li>
+                        <li><strong>Leadership:</strong> ${leadershipReason}</li>
+                        <li><strong>Adversity:</strong> ${adversityReason}</li>
+                        <li><strong>Community impact:</strong> ${communityReason}</li>
+                        <li><strong>Review complexity:</strong> ${complexityReason}</li>
+                    </ul>
+                </div>
+            `;
+            applicantsGrid.appendChild(card);
+        });
+    }
+
+    window.toggleStatement = function (label) {
+        const box = document.getElementById(`statement-${label}`);
+        if (!box) return;
+        const visible = box.style.display === "block";
+        box.style.display = visible ? "none" : "block";
+    };
+
+    window.toggleResume = function (label) {
+        const box = document.getElementById(`resume-${label}`);
+        if (!box) return;
+        const visible = box.style.display === "block";
+        box.style.display = visible ? "none" : "block";
+    };
+
+    function getResumeTemplate(label, applicant) {
+        const profile = applicant.profile || {};
+        const template = RESUME_TEMPLATES[label];
+        if (!template) {
+            return `
+                <div class="resume-header">
+                    <div class="resume-name">${applicant.name}</div>
+                    <div class="resume-contact">${applicant.name} | student@example.com</div>
+                </div>
+                <div class="resume-section">
+                    <h4>Education</h4>
+                    <div>Expected Graduation: May 2026</div>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="resume-header" id="resumeModalTitle">
+                <div class="resume-name">${applicant.name}</div>
+                <div class="resume-contact">${template.contact}</div>
+                <div class="resume-contact">${template.location}</div>
+            </div>
+            <div class="resume-section">
+                <h4>Education</h4>
+                <div>${template.education}</div>
+            </div>
+            <div class="resume-section">
+                <h4>Experience</h4>
+                ${template.experience.map((item) => `
+                    <div class="resume-row">
+                        <div class="resume-role">${item.title}</div>
+                        <div class="resume-meta">${item.dates || ""}</div>
+                    </div>
+                    <div class="resume-meta" style="text-align:left; margin-bottom:6px;">${item.org}${item.location ? ` | ${item.location}` : ""}</div>
+                    <ul class="resume-bullets">${(item.bullets || []).map((bullet) => `<li>${bullet}</li>`).join("")}</ul>
+                `).join("")}
+            </div>
+            <div class="resume-section">
+                <h4>Activities</h4>
+                <ul class="resume-bullets">${template.activities.map((item) => `<li>${item}</li>`).join("")}</ul>
+            </div>
+            <div class="resume-section">
+                <h4>Awards & Honors</h4>
+                <ul class="resume-bullets">${template.honors.map((item) => `<li>${item}</li>`).join("")}</ul>
+            </div>
+            <div class="resume-section">
+                <h4>Skills</h4>
+                <div>${template.skills.join(" • ")}</div>
+            </div>
+            <div class="resume-section">
+                <h4>Profile Snapshot</h4>
+                <div>Research: ${profile.research}/10 | Leadership: ${profile.leadership}/10 | Adversity: ${profile.adversity}/10 | Community Impact: ${profile.communityImpact}/10</div>
+            </div>
+        `;
+    }
+
+    window.openResumeModal = function (label) {
+        const applicant = (window.__applicants || FALLBACK_APPLICANTS).find((item) => item.label === label || item.candidateLabel === label);
+        if (!applicant) return;
+        resumePaper.innerHTML = getResumeTemplate(label, applicant);
+        resumeModal.classList.remove("hidden");
+    };
+
+    function closeResumeModal() {
+        resumeModal.classList.add("hidden");
+        resumePaper.innerHTML = "";
+    }
+
+    resumeCloseBtn.addEventListener("click", closeResumeModal);
+    resumeModal.addEventListener("click", (event) => {
+        if (event.target === resumeModal) {
+            closeResumeModal();
+        }
+    });
+
+    function buildScoreReason(applicant, metric) {
+        const profile = applicant.profile || {};
+
+        if (metric === "research") {
+            if (profile.research >= 9) return "the resume shows repeated lab, project, or internship evidence that is clearly research-heavy.";
+            if (profile.research >= 7) return "the resume shows strong technical or project work, but not the full depth of a top research portfolio.";
+            if (profile.research >= 4) return "there is some research-adjacent work or technical curiosity, but the record is still mixed.";
+            return "the resume does not show much formal research exposure, so the score stays low.";
+        }
+
+        if (metric === "leadership") {
+            if (profile.leadership >= 9) return "the resume shows clear organizing, coordination, or founder-level leadership across multiple settings.";
+            if (profile.leadership >= 7) return "the resume shows meaningful leadership through mentoring, coordinating, or guiding groups.";
+            if (profile.leadership >= 4) return "the resume shows some responsibility or initiative, but not sustained large-scale leadership.";
+            return "the resume is mostly individual or technical work, so leadership evidence is limited.";
+        }
+
+        if (metric === "adversity") {
+            if (profile.adversity >= 9) return "the resume shows heavy access barriers such as limited internet, family responsibilities, work, or relocation.";
+            if (profile.adversity >= 6) return "the resume shows noticeable barriers and added responsibilities that likely shaped access to opportunity.";
+            if (profile.adversity >= 3) return "there is some context pressure, but not enough to mark the applicant as highly burdened.";
+            return "the resume does not show major structural barriers, so adversity remains low.";
+        }
+
+        if (metric === "community") {
+            if (profile.communityImpact >= 9) return "the resume shows direct community work, volunteering, or service leadership with visible reach.";
+            if (profile.communityImpact >= 6) return "the resume shows solid community involvement and recurring service commitments.";
+            if (profile.communityImpact >= 3) return "the resume shows limited or occasional community involvement.";
+            return "the resume has very little community-facing service evidence.";
+        }
+
+        if (metric === "complexity") {
+            if (profile.reviewComplexity >= 9) return "the profile mixes very strong achievements with major context barriers, so review requires extra nuance.";
+            if (profile.reviewComplexity >= 6) return "the profile has enough mixed signals that a holistic review is more difficult than a straightforward case.";
+            return "the profile is relatively straightforward to evaluate because the signals are more consistent.";
+        }
+
+        return "the score was estimated from the resume and holistic profile signals.";
+    }
+
+    window.toggleScoreHelp = function (label) {
+        document.querySelectorAll(".score-help-popover").forEach((popover) => {
+            if (popover.id !== `score-help-${label}`) {
+                popover.style.display = "none";
+            }
+        });
+
+        const box = document.getElementById(`score-help-${label}`);
+        if (!box) return;
+        const visible = box.style.display === "block";
+        box.style.display = visible ? "none" : "block";
+    };
+
+    function setStatus(message, isError) {
+        statusBox.style.display = "block";
+        statusBox.classList.toggle("error", Boolean(isError));
+        statusBox.textContent = message;
+    }
+
+    function clearStatus() {
+        statusBox.style.display = "none";
+        statusBox.classList.remove("error");
+        statusBox.textContent = "";
+    }
+
+    function setPrimerVisible(visible) {
+        studyPrimer.classList.toggle("hidden", !visible);
+        initializerFlow.classList.toggle("flow-hidden", visible);
+    }
+
+    function getStartPayload() {
+        const overallRationale = document.getElementById("overallRationale").value.trim();
+
+        const cards = Array.from(applicantsGrid.querySelectorAll("article.card"));
+        const candidateEvaluations = cards.map((card) => {
+            const label = card.getAttribute("data-label");
+            const applicant = (window.__applicants || FALLBACK_APPLICANTS).find((item) => item.label === label || item.candidateLabel === label);
+            return {
+            candidateLabel: applicant.label || applicant.candidateLabel,
+            candidateName: applicant.name || applicant.candidateName,
+            decision: document.getElementById(`decision-${label}`).value,
+            notes: document.getElementById(`notes-${label}`).value.trim(),
+            profile: applicant.profile
+            };
+        });
+
+        return {
+            candidateEvaluations,
+            overallRationale
+        };
+    }
+
+    function renderQuestions(items) {
+        questionsHost.innerHTML = "";
+        items.forEach((q) => {
+            const wrapper = document.createElement("div");
+            wrapper.className = "q-block";
+            wrapper.innerHTML = `
+                <p class="q-prompt">${q.prompt}</p>
+                <div class="q-row">
+                    <span>${q.leftLabel}</span>
+                    <select data-qid="${q.id}">
+                        <option value="strong_left">Strongly left</option>
+                        <option value="left">Left</option>
+                        <option value="balanced" selected>Balanced</option>
+                        <option value="right">Right</option>
+                        <option value="strong_right">Strongly right</option>
+                    </select>
+                    <span style="text-align:right;">${q.rightLabel}</span>
+                </div>
+            `;
+            questionsHost.appendChild(wrapper);
+        });
+    }
+
+    function collectAnswers() {
+        const answerMap = {};
+        const selects = questionsHost.querySelectorAll("select[data-qid]");
+        selects.forEach((el) => {
+            answerMap[el.getAttribute("data-qid")] = el.value;
+        });
+        return answerMap;
+    }
+
+    async function postJson(url, body) {
+        let response;
+        try {
+            response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+        } catch (err) {
+            throw new Error("Could not reach backend API. Start it with: .\\.venv\\Scripts\\python.exe .\\run_hci_server.py");
+        }
+
+        let data = {};
+        try {
+            data = await response.json();
+        } catch (err) {
+            data = {};
+        }
+        if (!response.ok) {
+            const msg = data && data.error ? data.error : "Request failed";
+            throw new Error(msg);
+        }
+        return data;
+    }
+
+    async function pingBackend() {
+        try {
+            const response = await fetch(`${API_BASE}/api/health`);
+            if (!response.ok) {
+                throw new Error("Health endpoint returned non-200");
+            }
+            backendReachable = true;
+            backendStatus.style.display = "none";
+        } catch (err) {
+            backendReachable = false;
+            backendStatus.style.display = "none";
+        }
+    }
+
+    function renderComputationNarrative(data) {
+        const weights = data.dimensionWeights || {};
+        const seed = data.seed || {};
+        const raceSensitivity = typeof data.raceSensitivity === "number" ? data.raceSensitivity : null;
+        const raceSensitivityText = raceSensitivity === null ? "n/a" : raceSensitivity.toFixed(2);
+
+        const x = typeof seed.xRatio === "number" ? seed.xRatio.toFixed(3) : "n/a";
+        const y = typeof seed.yRatio === "number" ? seed.yRatio.toFixed(3) : "n/a";
+
+        traceExplain.innerHTML = `
+            <strong>How your stance was computed:</strong><br>
+            1) For each applicant, your Admit/Reject label became the target variable (1 or 0).<br>
+            2) We built feature vectors from both profile data and your written notes (GPA, tests, research, adversity, first-gen, leadership, community).<br>
+            3) A regularized regression estimated how strongly each feature predicts your decisions.<br>
+                4) Coefficients were aggregated into four value dimensions and normalized:<br>
+                    Scores & Benchmarks=${(100 * (weights.readiness || 0)).toFixed(1)}%, Context & Obstacles=${(100 * (weights.opportunity || 0)).toFixed(1)}%, Outcome-Only Merit=${(100 * (weights.individual || 0)).toFixed(1)}%, Opportunity-Gap Aware=${(100 * (weights.equity || 0)).toFixed(1)}%.<br>
+            5) Graph placement used those dimensions:<br>
+                    x = Outcome-Only Merit / (Outcome-Only Merit + Opportunity-Gap Aware) = ${x}<br>
+                    y = Context & Obstacles / (Scores & Benchmarks + Context & Obstacles) = ${y}<br>
+            ${raceSensitivity === null ? "" : `6) Race sensitivity was estimated with counterfactual swaps of race labels while holding all other applicant attributes fixed: ${raceSensitivityText} (0-10 scale).`}
+        `;
+    }
+
+    async function loadApplicants() {
+        try {
+            const response = await fetch(`${API_BASE}/api/init/default-applicants`);
+            if (!response.ok) {
+                throw new Error("default applicants unavailable");
+            }
+            const data = await response.json();
+            const applicants = (data.applicants || []).map((item) => ({
+                label: item.candidateLabel,
+                name: item.candidateName,
+                profile: item.profile,
+                summary: item.summary || "Review both performance and context before deciding.",
+                personalStatement: item.personalStatement || "",
+                resume: item.resume || ""
+            }));
+            window.__applicants = applicants;
+            renderApplicantCards(applicants);
+            return;
+        } catch (err) {
+            window.__applicants = FALLBACK_APPLICANTS;
+            renderApplicantCards(FALLBACK_APPLICANTS);
+        }
+    }
+
+    startBtn.addEventListener("click", async () => {
+        clearStatus();
+        if (!backendReachable) {
+            await pingBackend();
+        }
+        if (!backendReachable) {
+            setStatus("Backend is not reachable yet. Start the API server and retry.", true);
+            return;
+        }
+        const payload = getStartPayload();
+        if (!payload.overallRationale || payload.candidateEvaluations.some((c) => !c.notes)) {
+            setStatus("Please provide notes for all 12 applicants and your overall rationale.", true);
+            return;
+        }
+
+        startBtn.disabled = true;
+        try {
+            const data = await postJson(`${API_BASE}/api/init/start`, payload);
+            sessionId = data.sessionId;
+            questions = data.clarificationQuestions || [];
+            renderQuestions(questions);
+            questionsSection.style.display = "block";
+            summaryBox.style.display = "block";
+            const prelimScore = Number(data.raceSensitivity || 0);
+            summaryHeadline.innerHTML = `<strong>Preliminary Analysis (Before Pairwise).</strong><br><br>Preliminary race disparity risk score: <strong>${prelimScore.toFixed(2)}</strong> <span style="color:#6b7280;">(0-10 scale; this can change after you submit pairwise clarifications)</span>`;
+            vectorCode.innerHTML = `<p style="margin:0 0 10px 0;"><strong>Note:</strong> This score is computed before pairwise clarifications and is still subject to change.</p>${data.initializationExplanation || "<p style='color: #999;'>Unable to load explanation</p>"}`;
+            setStatus("Now answer the pairwise questions, then click 'Submit Pairwise'. Your sensitivity estimate may shift after submission.", false);
+        } catch (err) {
+            setStatus(err.message, true);
+        } finally {
+            startBtn.disabled = false;
+        }
+    });
+
+    finalizeBtn.addEventListener("click", async () => {
+        clearStatus();
+        if (!sessionId) {
+            setStatus("Start the initialization step first.", true);
+            return;
+        }
+
+        finalizeBtn.disabled = true;
+        try {
+            const answers = collectAnswers();
+            const data = await postJson(`${API_BASE}/api/init/answers`, { sessionId, answers });
+            finalPayload = data;
+
+            const seedState = {
+                sessionId,
+                seed: data.seed,
+                dimensionWeights: data.dimensionWeights,
+                explanation: data.explanation,
+                raceSensitivity: data.raceSensitivity,
+                counterfactualChanges: data.counterfactualChanges,
+                counterfactualPromptTemplate: data.counterfactualPromptTemplate,
+                createdAt: new Date().toISOString()
+            };
+            sessionStorage.setItem("hybridSeedState", JSON.stringify(seedState));
+
+            summaryBox.style.display = "block";
+            summaryHeadline.innerHTML = `<strong>Pairwise Submitted. Finalized Seed Ready.</strong><br><br>${data.explanation}<br><br>Your stance has now been updated with pairwise clarifications. Click "Open Trade-Off Graph" to continue.`;
+            vectorCode.innerHTML = `<p style="font-size: 0.85rem; color: #666; font-style: italic;">Vector prepared. Ready to explore the graph.</p>`;
+            openGraphBtn.style.display = "inline-block";
+            setStatus("Pairwise responses saved. You can now open the seeded graph.", false);
+        } catch (err) {
+            setStatus(err.message, true);
+        } finally {
+            finalizeBtn.disabled = false;
+        }
+    });
+
+    openGraphBtn.addEventListener("click", () => {
+        window.location.href = "tradeoffGraph.html";
+    });
+
+    loadApplicants();
+    pingBackend();
+    setPrimerVisible(true);
+
+    primerContinueBtn.addEventListener("click", () => {
+        setPrimerVisible(false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+})();
+</script>
+</body>
+</html>

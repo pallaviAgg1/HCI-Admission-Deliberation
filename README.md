@@ -1,121 +1,128 @@
 # Admissions Reflection Prototype
 
-Single guide for setup, usage, and technical behavior.
+Single source of truth for setup, current flow, scoring behavior, and API surface.
 
-## What This App Does
+## Overview
 
-The app helps you reflect on admissions trade-offs and bias risk in two steps:
+This app helps users reflect on admissions decision strategy and modeled race disparity risk.
 
-1. Initializer:
-- Evaluate 6 applicants (admit/reject)
-- Add notes + overall rationale
-- Answer pairwise clarification questions
-- Produce a seeded trade-off point
+Current workflow:
+1. Initializer page
+2. Pairwise clarification submission
+3. Trade-off graph with live analysis, explanation, and reflection capture
 
-2. Trade-Off Graph:
-- Drag your point on a 2D map
-- See race sensitivity update in real time
-- Try Conservative / Moderate / Ambitious suggestions
+## Current System (Important)
+
+- Active backend module: `race_disparity_pipeline`
+- Do not run: `wisdom_stories_demo.app` (legacy path)
+- Score scale: race disparity score is displayed on a `0-10` scale (not percent)
 
 ## Tech Stack
 
 - Frontend: Vanilla HTML/CSS/JavaScript
 - Backend: Flask + Flask-CORS
- Data: CSV + SQLite (`race_disparity_pipeline/study_sessions.db`)
- .\venv\Scripts\python.exe -m pip install -r .\requirements.txt
- .\venv\Scripts\python.exe -m race_disparity_pipeline.app
- It is a custom in-code counterfactual simulation implemented in `race_disparity_pipeline/fairness_analysis.py`.
- `race_disparity_pipeline/app.py`
- `race_disparity_pipeline/initialization_service.py`
- `race_disparity_pipeline/fairness_analysis.py`
- `race_disparity_pipeline/storage.py`
+- Storage:
+  - SQLite session store: `race_disparity_pipeline/study_sessions.db`
+  - Reflection CSV export source: `race_disparity_pipeline/reflection_submissions.csv`
+
+## Setup
+
+1. Create virtual environment (if needed):
+
+```powershell
+python -m venv .venv
+```
+
+2. Activate virtual environment:
+
 ```powershell
 & .\.venv\Scripts\Activate.ps1
 ```
 
-2. Install dependencies:
+3. Install dependencies:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r .\wisdom_stories_demo\requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r .\race_disparity_pipeline\requirements.txt
 ```
 
-3. Run server:
+## Run
+
+Start the server with:
 
 ```powershell
-.\.venv\Scripts\python.exe -m wisdom_stories_demo.app
+.\.venv\Scripts\python.exe .\run_hci_server.py
 ```
 
-4. Open:
+Open:
 
-`http://127.0.0.1:5050/`
+- `http://127.0.0.1:5050/`
+- or directly `http://127.0.0.1:5050/hybrid_initializer.html`
 
 ## End-to-End Flow
 
-1. Open the initializer. You will first see a short study primer that explains the six-applicant admissions task and the race-sensitivity check.
-2. Complete 6 applicant decisions + notes + overall rationale.
-3. Generate and answer pairwise questions.
-4. Open seeded trade-off graph.
-5. Explore point movement or choose suggestion cards.
-6. (Optional) export sessions from `/api/export/sessions.csv`.
+1. Open initializer.
+2. Complete admissions decisions for at least 12 applicants (admit/reject + notes + overall rationale).
+3. Submit pairwise clarifications.
+4. Open the trade-off graph.
+5. On graph update, UI now renders in this order:
+   - Race disparity score and meter
+   - Top disparity pairs table
+   - Streaming AI explanation
+6. Optionally submit reflection survey and export data.
 
-## Pairwise Questions (Current)
+## Scoring Behavior
 
-- Merit-Based Selection vs Family Financial Context
-- Merit-Based Selection vs School Resource Context
-- School Resource Context vs Community Responsibility Context
-- Family Financial Context vs Community Responsibility Context
-
-Depending on your current balance, the app may show 3 or 4 questions.
-
-## CPF (Counterfactual Fairness) in Plain English
-
-Technology used:
-- No external CPF library/tool is used.
-- It is a custom in-code counterfactual simulation implemented in `wisdom_stories_demo/fairness_analysis.py`.
-
-How it works:
-1. At your current point, it computes each applicant's score.
-2. For that same applicant, it swaps only race group and recomputes score across configured race groups.
-3. It measures score shift from those swaps and aggregates into one race-sensitivity value.
-
-How suggestions are generated around your point:
-- It checks a nearby interior grid of candidate points from `x=0.10..0.90` and `y=0.10..0.90` in `0.05` steps.
-- That is `17 x 17 = 289` candidate points.
-- For each candidate point, it reruns the same CPF sensitivity calculation.
-- It selects the best target by minimizing:
-  - CPF sensitivity
-  - movement distance from your current point
-  - edge penalty (avoid brittle edge/corner solutions)
-- Then creates:
-  - Conservative = 35% move to target
-  - Moderate = 70% move to target
-  - Ambitious = 100% move to target
+- Race disparity score is model-derived and shown on a `0-10` scale.
+- Higher value means larger modeled race-pair admit-probability gaps under matched synthetic comparisons.
+- Common interpretation bands:
+  - `0.0 - 1.2`: Low
+  - `1.2 - 2.8`: Moderate
+  - `2.8 - 4.5`: Elevated
+  - `4.5 - 10.0`: High
 
 ## Core Files
 
 - `hybrid_initializer.html`
 - `tradeoffGraph.html`
-- `wisdom_stories_demo/app.py`
-- `wisdom_stories_demo/initialization_service.py`
-- `wisdom_stories_demo/fairness_analysis.py`
-- `wisdom_stories_demo/storage.py`
+- `run_hci_server.py`
+- `race_disparity_pipeline/app.py`
+- `race_disparity_pipeline/initialization_service.py`
+- `race_disparity_pipeline/fairness_analysis.py`
+- `race_disparity_pipeline/storage.py`
 
 ## API Endpoints
 
 - `GET /api/health`
+- `GET /api/init/default-applicants`
 - `POST /api/init/start`
 - `POST /api/init/answers`
-- `POST /api/analysis/dialogue`
 - `POST /api/analysis/race-sensitivity`
+- `POST /api/analysis/coach-insight`
+- `POST /api/analysis/dialogue`
+- `POST /api/analysis/apply-suggestion`
+- `POST /api/analysis/ask-question`
+- `POST /api/value-cards/recommend`
 - `POST /api/events/confidence`
+- `POST /api/events/reflection`
 - `GET /api/export/sessions.csv`
+- `GET /api/export/reflections.csv`
 
-## Quick Troubleshooting
+## Troubleshooting
 
-- If you see stale question text, hard refresh the browser (`Ctrl+F5`).
-- Ensure only one backend process is running on `:5050`.
-- Health check:
+1. If UI looks stale, hard refresh browser (`Ctrl+Shift+R`).
+2. Ensure only one backend process is listening on `:5050`.
+3. Verify health endpoint:
 
 ```powershell
 Invoke-WebRequest -UseBasicParsing http://127.0.0.1:5050/api/health
 ```
+
+4. Check active process on port 5050:
+
+```powershell
+Get-NetTCPConnection -LocalPort 5050 -State Listen |
+  Select-Object -First 1 -ExpandProperty OwningProcess |
+  ForEach-Object { Get-CimInstance Win32_Process -Filter "ProcessId=$($_)" | Select-Object ProcessId, Name, CommandLine }
+```
+
+Expected command line should include `run_hci_server.py` and `race_disparity_pipeline.app`.

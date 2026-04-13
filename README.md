@@ -14,7 +14,6 @@ Current workflow:
 ## Current System (Important)
 
 - Active backend module: `race_disparity_pipeline`
-- Do not run: `wisdom_stories_demo.app` (legacy path)
 - Score scale: race disparity score is displayed on a `0-10` scale (not percent)
 
 ## Tech Stack
@@ -63,7 +62,7 @@ Open:
 1. Open initializer.
 2. Complete admissions decisions for at least 12 applicants (admit/reject + notes + overall rationale).
 3. Submit pairwise clarifications.
-4. Open the trade-off graph.
+4. Open the trade-off distribution graph.
 5. On graph update, UI now renders in this order:
    - Race disparity score and meter
    - Top disparity pairs table

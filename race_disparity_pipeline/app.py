@@ -16,6 +16,11 @@ except Exception:
     OpenAI = None
 
 try:
+    from dotenv import load_dotenv
+except Exception:
+    load_dotenv = None
+
+try:
     from .initialization_service import build_initial_snapshot, finalize_weights
     from .storage import (
         append_reflection_submission,
@@ -68,6 +73,9 @@ except ImportError:
 ROOT = Path(__file__).resolve().parent
 WEB_ROOT = ROOT.parent
 
+if load_dotenv is not None:
+    load_dotenv(WEB_ROOT / ".env")
+
 app = Flask(__name__)
 CORS(app)
 init_db()
@@ -109,30 +117,55 @@ def _build_weight_snapshot(seed: Dict[str, float], weights: Dict[str, float] | N
     }
 
 
-def _llm_chat_response(system_prompt: str, user_prompt: str, temperature: float = 0.35, max_tokens: int = 260) -> str | None:
+def _llm_chat_response(system_prompt: str, user_prompt: str, temperature: float = 0.35, max_tokens: int = 260) -> tuple[str | None, str | None]:
     if not OPENAI_API_KEY or OpenAI is None:
         print("[llm] OpenAI unavailable (missing key or SDK). Using fallback response.", flush=True)
-        return None
+        return None, "OpenAI SDK or API key is missing in the server environment."
     try:
         client = OpenAI(api_key=OPENAI_API_KEY)
-        completion = client.chat.completions.create(
-            model=OPENAI_CHAT_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        content = (completion.choices[0].message.content or "").strip()
-        print(f"[llm] OpenAI response received. model={OPENAI_CHAT_MODEL}, has_content={bool(content)}", flush=True)
-        return content or None
+        model_candidates = [OPENAI_CHAT_MODEL, "gpt-4o-mini", "gpt-4.1-mini", "gpt-4o"]
+        seen_models = set()
+        last_error: Exception | None = None
+
+        for model_name in model_candidates:
+            if not model_name or model_name in seen_models:
+                continue
+            seen_models.add(model_name)
+            try:
+                completion = client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+                message = completion.choices[0].message
+                content = (getattr(message, "content", None) or "").strip()
+                refusal = (getattr(message, "refusal", None) or "").strip()
+                print(
+                    f"[llm] OpenAI response received. model={model_name}, has_content={bool(content)}, has_refusal={bool(refusal)}",
+                    flush=True,
+                )
+                if content:
+                    return content, None
+                if refusal:
+                    return None, f"OpenAI refused the request for model {model_name}: {refusal}"
+                return None, f"OpenAI returned an empty response for model {model_name}"
+            except Exception as exc:
+                last_error = exc
+                print(f"[llm] OpenAI request failed for model={model_name}. error={exc}", flush=True)
+
+        if last_error is not None:
+            print(f"[llm] All model attempts failed. Using fallback response. last_error={last_error}", flush=True)
+        return None, f"OpenAI request failed: {last_error}"
     except Exception as exc:
         print(f"[llm] OpenAI request failed. Using fallback. error={exc}", flush=True)
-        return None
+        return None, f"OpenAI request failed: {exc}"
 
 
-def _llm_stance_explanation(seed: Dict[str, float], sensitivity: float, weights: Dict[str, float] | None = None) -> str | None:
+def _llm_stance_explanation(seed: Dict[str, float], sensitivity: float, weights: Dict[str, float] | None = None) -> tuple[str | None, str | None]:
     summary = _build_weight_snapshot(seed, weights)
     prompt = (
         "Explain the user's current admissions stance in 3-4 short sentences. "
@@ -145,15 +178,16 @@ def _llm_stance_explanation(seed: Dict[str, float], sensitivity: float, weights:
         f"- Current race sensitivity: {sensitivity:.1f}%\n"
         "Mention one practical trade-off implied by this stance."
     )
-    return _llm_chat_response(
+    response, error = _llm_chat_response(
         "You are a concise, supportive admissions fairness coach.",
         prompt,
         temperature=0.3,
         max_tokens=220,
     )
+    return response, error
 
 
-def _llm_question_answer(question: str, seed: Dict[str, float], sensitivity: float, fairness: Dict[str, Any], weights: Dict[str, float] | None = None) -> str | None:
+def _llm_question_answer(question: str, seed: Dict[str, float], sensitivity: float, fairness: Dict[str, Any], weights: Dict[str, float] | None = None) -> tuple[str | None, str | None]:
     summary = _build_weight_snapshot(seed, weights)
     top_shift = 0.0
     if fairness.get("counterfactualChanges"):
@@ -173,12 +207,13 @@ def _llm_question_answer(question: str, seed: Dict[str, float], sensitivity: flo
         f"Largest per-applicant race-group shift signal: {top_shift:.4f}\n"
         "Do not mention policy/legal advice. Keep tone helpful and clear."
     )
-    return _llm_chat_response(
+    response, error = _llm_chat_response(
         "You are a practical AI assistant that explains fairness analytics to non-technical users.",
         prompt,
         temperature=0.4,
         max_tokens=280,
     )
+    return response, error
 
 
 def _json_error(message: str, status: int = 400):
@@ -707,7 +742,9 @@ def ask_question():
             f"{100.0 * float(lead.get('meanGap', 0.0)):.1f} points."
         )
 
-    response = _llm_question_answer(question, merged_seed, sens, fairness, weights)
+    llm_response, llm_error = _llm_question_answer(question, merged_seed, sens, fairness, weights)
+    print(f"[ask_question] llm_response_present={bool(llm_response)} llm_error={llm_error!r}", flush=True)
+    response = llm_response
     if not response:
         response = (
             f"I could not reach the language model, so here is a direct model summary. "
@@ -717,12 +754,18 @@ def ask_question():
             f"School {summary['school']:.1f}%, Community {summary['community']:.1f}%. "
             f"This is a model-based risk estimate, not legal or causal proof."
         )
+        if llm_error:
+            response = f"{response} LLM error: {llm_error}"
 
     return jsonify(
         {
             "response": _clean_ai_text(response),
             "regenerateSuggestions": False,
             "suggestions": [],
+            "debug": {
+                "llmResponsePresent": bool(llm_response),
+                "llmError": llm_error,
+            },
         }
     )
 

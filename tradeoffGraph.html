@@ -86,6 +86,14 @@
 
         input[type="range"] {
             width: 100%;
+            accent-color: #b42318;
+        }
+
+        input[type="range"].locked-slider {
+            pointer-events: none;
+            cursor: default;
+            opacity: 1;
+            filter: none;
         }
 
         .score {
@@ -300,22 +308,22 @@
 
             <div class="control">
                 <div class="row"><span>Merit-Based Context</span><span id="meritVal">25.0%</span></div>
-                <input id="merit" type="range" min="0" max="100" step="0.1" value="25" />
+                <input id="merit" class="locked-slider" type="range" min="0" max="100" step="0.1" value="25" aria-disabled="true" tabindex="-1" />
             </div>
             <div class="control">
                 <div class="row"><span>Family-Based Context</span><span id="familyVal">25.0%</span></div>
-                <input id="family" type="range" min="0" max="100" step="0.1" value="25" />
+                <input id="family" class="locked-slider" type="range" min="0" max="100" step="0.1" value="25" aria-disabled="true" tabindex="-1" />
             </div>
             <div class="control">
                 <div class="row"><span>School-Based Context</span><span id="schoolVal">25.0%</span></div>
-                <input id="school" type="range" min="0" max="100" step="0.1" value="25" />
+                <input id="school" class="locked-slider" type="range" min="0" max="100" step="0.1" value="25" aria-disabled="true" tabindex="-1" />
             </div>
             <div class="control">
                 <div class="row"><span>Community-Based Context</span><span id="communityVal">25.0%</span></div>
-                <input id="community" type="range" min="0" max="100" step="0.1" value="25" />
+                <input id="community" class="locked-slider" type="range" min="0" max="100" step="0.1" value="25" aria-disabled="true" tabindex="-1" />
             </div>
 
-            <p class="small">Sliders always rebalance to 100%.<br>Merit emphasizes academic preparation and achievement.<br>Family emphasizes financial and first-generation context.<br>School emphasizes school resource and environment context.<br>Community emphasizes service, leadership, and broader social contribution.</p>
+            <p class="small">These values are locked from your initializer + pairwise step to keep the race disparity score and stance explanation stable.<br>Merit emphasizes academic preparation and achievement.<br>Family emphasizes financial and first-generation context.<br>School emphasizes school resource and environment context.<br>Community emphasizes service, leadership, and broader social contribution.</p>
         </article>
 
         <article class="panel">
@@ -452,8 +460,8 @@
     };
 
     let sessionId = null;
-    let debounce = null;
     const reflectionState = {};
+    let lockedState = { merit: 25, family: 25, school: 25, community: 25 };
 
     function classifyBias(sensitivity) {
         if (sensitivity < 1.2) {
@@ -524,12 +532,7 @@
     }
 
     function getState() {
-        return {
-            merit: Number(sliders.merit.value),
-            family: Number(sliders.family.value),
-            school: Number(sliders.school.value),
-            community: Number(sliders.community.value),
-        };
+        return { ...lockedState };
     }
 
     function normalizeState(state) {
@@ -798,20 +801,6 @@
         }
     }
 
-    function wireSlider(key) {
-        sliders[key].addEventListener("input", (event) => {
-            console.log(`[wireSlider] ${key} input event fired, value=${event.target.value}`);
-            rebalance(key, sliders[key].value);
-            if (debounce) {
-                clearTimeout(debounce);
-            }
-            debounce = setTimeout(() => {
-                console.log(`[wireSlider] Debounce expired for ${key}, calling fetchDialogue`);
-                fetchDialogue();
-            }, 150);
-        });
-    }
-
     function hydrateSession() {
         try {
             const raw = sessionStorage.getItem("hybridSeedState");
@@ -845,6 +834,7 @@
                 
                 // Then normalize and update labels
                 const n = normalizeState(rawState);
+                lockedState = { ...n };
                 Object.keys(n).forEach((k) => {
                     const normalized = n[k].toFixed(1);
                     sliders[k].value = normalized;
@@ -854,19 +844,17 @@
             } else {
                 console.log("[hydrateSession] No valueWeights in seed, using defaults");
                 rebalance("merit", 25);
+                lockedState = { merit: 25, family: 25, school: 25, community: 25 };
             }
         } catch (err) {
             console.error("[hydrateSession] Error:", err);
             sessionId = null;
             rebalance("merit", 25);
+            lockedState = { merit: 25, family: 25, school: 25, community: 25 };
         }
     }
 
-    wireSlider("merit");
-    wireSlider("family");
-    wireSlider("school");
-    wireSlider("community");
-    console.log('[tradeoffGraph] Sliders wired');
+    console.log('[tradeoffGraph] Value sliders are locked for stable analysis');
 
     document.getElementById("askBtn").addEventListener("click", askQuestion);
     document.getElementById("q").addEventListener("keydown", (event) => {
@@ -889,7 +877,7 @@
     hydrateSession();
     console.log('[tradeoffGraph] Session hydrated', {sessionId: sessionId ? sessionId.substring(0, 16) + '...' : 'none'});
     fetchDialogue();
-    console.log('[tradeoffGraph] Initial dialogue loaded, page ready for slider interaction');
+    console.log('[tradeoffGraph] Initial dialogue loaded with locked value distribution');
 })();
 </script>
 </body>

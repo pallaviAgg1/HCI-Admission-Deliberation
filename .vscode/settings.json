@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^\\.\\\\\\.venv\\\\Scripts\\\\python\\.exe -m py_compile \\.\\\\race_disparity_pipeline\\\\initialization_service\\.py \\.\\\\race_disparity_pipeline\\\\semantic_profile_extractor\\.py$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

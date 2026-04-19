@@ -8,6 +8,11 @@ try:
 except ImportError:
     from .feature_extractor import extract_features
 
+try:
+    from semantic_profile_extractor import infer_semantic_profile_scores
+except ImportError:
+    from .semantic_profile_extractor import infer_semantic_profile_scores
+
 
 PAIRWISE_QUESTION_BANK = [
     {
@@ -57,15 +62,18 @@ FEATURE_ORDER = [
 ]
 
 
-def _profile_feature_vector(profile: Dict[str, Any]) -> Dict[str, float]:
+def _profile_feature_vector(candidate: Dict[str, Any]) -> Dict[str, float]:
+    profile = candidate.get("profile") or {}
+    semantic = infer_semantic_profile_scores(candidate)
+
     gpa = float(profile.get("gpa", 3.0)) / 4.0
     test = float(profile.get("testScore", 1200.0)) / 1600.0
-    research = float(profile.get("research", 0.0)) / 10.0
-    leadership = float(profile.get("leadership", 0.0)) / 10.0
-    adversity = float(profile.get("adversity", 0.0)) / 10.0
-    community = float(profile.get("communityImpact", 0.0)) / 10.0
-    first_gen = 1.0 if bool(profile.get("firstGen", False)) else 0.0
-    review_complexity = float(profile.get("reviewComplexity", 5.0)) / 10.0
+    research = float(semantic.get("research", float(profile.get("research", 0.0)) / 10.0))
+    leadership = float(semantic.get("leadership", float(profile.get("leadership", 0.0)) / 10.0))
+    adversity = float(semantic.get("adversity", float(profile.get("adversity", 0.0)) / 10.0))
+    community = float(semantic.get("community_impact", float(profile.get("communityImpact", 0.0)) / 10.0))
+    first_gen = float(semantic.get("first_gen", 1.0 if bool(profile.get("firstGen", False)) else 0.0))
+    review_complexity = float(semantic.get("review_complexity", float(profile.get("reviewComplexity", 5.0)) / 10.0))
 
     return {
         "gpa": gpa,
@@ -90,7 +98,7 @@ def _build_regression_data(candidates: List[Dict[str, Any]], overall_rationale: 
         notes = str(candidate.get("notes", ""))
         decision = str(candidate.get("decision", "")).strip().lower()
         signals = extract_features(notes)
-        profile_features = _profile_feature_vector(profile)
+        profile_features = _profile_feature_vector(candidate)
 
         row = [1.0]
         for feature in FEATURE_ORDER:
@@ -193,8 +201,7 @@ def _candidate_vector_projection(candidates: List[Dict[str, Any]], feature_score
 
     vectors: List[Dict[str, Any]] = []
     for candidate in candidates:
-        profile = candidate.get("profile") or {}
-        profile_features = _profile_feature_vector(profile)
+        profile_features = _profile_feature_vector(candidate)
 
         merit = sum(profile_features.get(f, 0.0) * max(0.01, feature_scores.get(f, 0.01)) for f in merit_features)
         context = sum(profile_features.get(f, 0.0) * max(0.01, feature_scores.get(f, 0.01)) for f in context_features)

@@ -919,16 +919,41 @@
     function getStartPayload() {
         const overallRationale = document.getElementById("overallRationale").value.trim();
 
+        function buildResumeText(applicant) {
+            const label = applicant.label || applicant.candidateLabel;
+            const template = RESUME_TEMPLATES[label];
+            if (template) {
+                const experienceLines = (template.experience || []).flatMap((item) => {
+                    const bullets = (item.bullets || []).join(" ");
+                    return [`${item.title} ${item.org} ${bullets}`.trim()];
+                });
+                return [
+                    template.education || "",
+                    experienceLines.join(" "),
+                    (template.activities || []).join(" "),
+                    (template.honors || []).join(" "),
+                    (template.skills || []).join(" "),
+                ]
+                    .filter(Boolean)
+                    .join("\n");
+            }
+            return String(applicant.resume || "").trim();
+        }
+
         const cards = Array.from(applicantsGrid.querySelectorAll("article.card"));
         const candidateEvaluations = cards.map((card) => {
             const label = card.getAttribute("data-label");
             const applicant = (window.__applicants || FALLBACK_APPLICANTS).find((item) => item.label === label || item.candidateLabel === label);
+            const resumeText = buildResumeText(applicant || {});
             return {
             candidateLabel: applicant.label || applicant.candidateLabel,
             candidateName: applicant.name || applicant.candidateName,
             decision: document.getElementById(`decision-${label}`).value,
             notes: document.getElementById(`notes-${label}`).value.trim(),
-            profile: applicant.profile
+            profile: applicant.profile,
+            summary: applicant.summary || "",
+            personalStatement: applicant.personalStatement || "",
+            resumeText
             };
         });
 

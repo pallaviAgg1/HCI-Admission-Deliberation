@@ -803,7 +803,7 @@
         tbody.innerHTML = "";
         if (!rows.length) {
             const explanation = buildWhereYouStandExplanation(null, fallbackSensitivity, currentWeights, currentFeatureBars);
-            document.getElementById("score").textContent = `${fallbackSensitivity.toFixed(2)} / 10`;
+            document.getElementById("score").textContent = `${fallbackSensitivity.toFixed(2)}`;
             document.getElementById("scoreNote").innerHTML = "Threshold guide: 0-1.2 Low, 1.2-2.8 Moderate, 2.8-4.5 Elevated, 4.5-10 High.<br>Higher score means larger model-based race-pair gaps in matched synthetic sets.";
             renderBiasMeter(fallbackSensitivity);
             const tr = document.createElement("tr");
@@ -818,7 +818,7 @@
         const topRawScore = 100 * Number(rows[0].meanGap || 0);
         const topDisplayScore = rescaleDisparityScore(topRawScore);
         const explanation = buildWhereYouStandExplanation(rows[0], topDisplayScore, currentWeights, currentFeatureBars);
-        document.getElementById("score").textContent = `${topDisplayScore.toFixed(2)} / 10`;
+        document.getElementById("score").textContent = `${topDisplayScore.toFixed(2)}`;
         document.getElementById("scoreNote").innerHTML = "Threshold guide: 0-1.2 Low, 1.2-2.8 Moderate, 2.8-4.5 Elevated, 4.5-10 High.<br>Higher score means larger model-based race-pair gaps in matched synthetic sets.";
         renderBiasMeter(topDisplayScore);
 

@@ -445,16 +445,10 @@ def _rescale_sensitivity(raw_score: float) -> float:
 
 
 def generate_initialization_explanation(dimension_weights: Dict[str, float], race_sensitivity: float) -> str:
-    school_resource = float(dimension_weights.get("readiness", 0.25)) * 100
-    community_resp = float(dimension_weights.get("opportunity", 0.25)) * 100
-    family_financial = float(dimension_weights.get("individual", 0.25)) * 100
-    merit = float(dimension_weights.get("equity", 0.25)) * 100
-
     return (
         f'<div style="line-height:1.45;font-size:0.93rem;">'
         f'<p><strong>What we computed:</strong> We used your 12 admit/reject decisions, notes, and pairwise clarifications to estimate your decision policy.</p>'
-        f'<p><strong>Your policy mix:</strong> Merit <strong>{merit:.0f}%</strong>, Family Context <strong>{family_financial:.0f}%</strong>, '
-        f'School Context <strong>{school_resource:.0f}%</strong>, Community Context <strong>{community_resp:.0f}%</strong>.</p>'
+        f'<p><strong>Regression view:</strong> The initializer now exposes nine feature-level bars for GPA, test scores, research, leadership, first-generation context, adversity, community impact, gender equity, and review efficiency.</p>'
         f'<p><strong>Race Disparity Score:</strong> <strong>{race_sensitivity:.1f}</strong>. '
         f'This is model-based risk from a matched synthetic benchmark.</p>'
         f'</div>'
@@ -468,8 +462,7 @@ def generate_plain_explanation(seed: Dict[str, float], sensitivity: float, weigh
         school_pct = float(weights.get("readiness", 0.25)) * 100
         community_pct = float(weights.get("opportunity", 0.25)) * 100
         return _clean_ai_text(
-            f"Your current policy emphasizes Merit {merit_pct:.0f}%, Family {family_pct:.0f}%, "
-            f"School {school_pct:.0f}%, and Community {community_pct:.0f}%. "
+            f"Your current policy is summarized by the four trade-off weights used for score computation, while the graph below shows the nine regression features separately. "
             f"The current model-based race disparity score is {float(sensitivity):.1f}."
         )
 

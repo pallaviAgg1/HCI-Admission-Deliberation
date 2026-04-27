@@ -139,6 +139,37 @@ def _regression_to_feature_scores(coeffs: np.ndarray, notes_feature_scores: Dict
     return feature_scores
 
 
+def _regression_influence_metrics(X: np.ndarray, coeffs: np.ndarray) -> Dict[str, Dict[str, float]]:
+    """Return per-feature standardized effects and normalized influence percentages.
+
+    We scale each coefficient by the empirical std-dev of its feature column so the
+    importance is comparable across features, then normalize to 100%.
+    """
+    feature_stds = np.std(X[:, 1:], axis=0)
+    standardized = np.abs(coeffs[1:] * feature_stds)
+
+    if float(np.sum(standardized)) <= 1e-12:
+        standardized = np.abs(coeffs[1:])
+
+    total = float(np.sum(standardized))
+    fallback_share = 100.0 / len(FEATURE_ORDER) if FEATURE_ORDER else 0.0
+
+    standardized_effect: Dict[str, float] = {}
+    influence_pct: Dict[str, float] = {}
+    feature_std: Dict[str, float] = {}
+
+    for idx, feature in enumerate(FEATURE_ORDER):
+        standardized_effect[feature] = float(standardized[idx])
+        feature_std[feature] = float(feature_stds[idx])
+        influence_pct[feature] = float((standardized[idx] / total) * 100.0) if total > 1e-12 else fallback_share
+
+    return {
+        "featureStd": feature_std,
+        "standardizedEffect": standardized_effect,
+        "influencePct": influence_pct,
+    }
+
+
 def _to_dimension_weights(feature_scores: Dict[str, float]) -> Dict[str, float]:
     # Semantic alignment to graph labels while preserving existing keys for compatibility:
     # - equity key -> Merit-Based Selection (left axis)
@@ -271,6 +302,7 @@ def _adjust_weights_for_answers(weights: Dict[str, float], answers: Dict[str, st
 def build_initial_snapshot(candidates: List[Dict[str, Any]], overall_rationale: str) -> Dict[str, object]:
     X, y, notes_feature_scores = _build_regression_data(candidates, overall_rationale)
     coeffs = _ridge_regression_weights(X, y)
+    influence_metrics = _regression_influence_metrics(X, coeffs)
     feature_scores = _regression_to_feature_scores(coeffs, notes_feature_scores)
     weights = _to_dimension_weights(feature_scores)
     questions = generate_clarification_questions(weights)
@@ -278,10 +310,22 @@ def build_initial_snapshot(candidates: List[Dict[str, Any]], overall_rationale: 
     candidate_vectors = _candidate_vector_projection(candidates, feature_scores)
 
     regression_details = {
-        "intercept": round(float(coeffs[0]), 4),
+        "intercept": round(float(coeffs[0]), 8),
         "coefficients": {
-            feature: round(float(coeffs[idx]), 4)
+            feature: round(float(coeffs[idx]), 8)
             for idx, feature in enumerate(FEATURE_ORDER, start=1)
+        },
+        "featureStd": {
+            feature: round(float(value), 8)
+            for feature, value in influence_metrics["featureStd"].items()
+        },
+        "standardizedEffect": {
+            feature: round(float(value), 8)
+            for feature, value in influence_metrics["standardizedEffect"].items()
+        },
+        "influencePct": {
+            feature: round(float(value), 4)
+            for feature, value in influence_metrics["influencePct"].items()
         },
         "method": "ridge_linear_probability",
         "lambda": 0.7,
@@ -309,8 +353,7 @@ def finalize_weights(snapshot_weights: Dict[str, float], answers: Dict[str, str]
 
     explanation = (
         "Your initial vector combines twelve admissions decisions, your written rationale, "
-        "and targeted pairwise clarifications. Merit-based, family-financial, school-resource, and community-responsibility priorities were "
-        "normalized into a single starting point for exploration."
+        "and targeted pairwise clarifications. The follow-up graph now exposes the nine learned regression features directly, so you can inspect the contribution of each coefficient instead of reading them through four buckets."
     )
 
     return {

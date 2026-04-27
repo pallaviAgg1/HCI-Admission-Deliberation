@@ -508,6 +508,8 @@ def init_answers():
     final_dimension_weights = final_payload.get("dimensionWeights", {})
     final_value_weights = _dimension_to_value_weights(final_dimension_weights)
     final_payload["seed"]["valueWeights"] = final_value_weights
+    final_payload["featureScores"] = snapshot.get("featureScores", {})
+    final_payload["regressionDetails"] = snapshot.get("regressionDetails", {})
     
     print(f"[init_answers] Pairwise-adjusted valueWeights: {final_value_weights}", flush=True)
     

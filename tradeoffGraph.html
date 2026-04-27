@@ -71,29 +71,73 @@
             font-size: 1.05rem;
         }
 
-        .control {
-            margin-bottom: 10px;
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
         }
 
-        .row {
+        .feature-card {
+            border: 1px solid #eadfcc;
+            border-radius: 10px;
+            background: linear-gradient(180deg, #ffffff 0%, #fbf7f0 100%);
+            padding: 10px;
+            min-height: 136px;
+        }
+
+        .feature-head {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            margin-bottom: 5px;
-            font-size: 0.88rem;
-            font-weight: 600;
+            gap: 8px;
+            align-items: baseline;
+            margin-bottom: 8px;
+            font-size: 0.86rem;
+            font-weight: 700;
         }
 
-        input[type="range"] {
+        .feature-beta {
+            font-size: 0.78rem;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .feature-meter {
             width: 100%;
-            accent-color: #b42318;
+            height: 12px;
+            border-radius: 999px;
+            border: 1px solid #dacdbd;
+            background: #f4ede3;
+            overflow: hidden;
         }
 
-        input[type="range"].locked-slider {
-            pointer-events: none;
-            cursor: default;
-            opacity: 1;
-            filter: none;
+        .feature-fill {
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #1f4d3c 0%, #4b7f5d 100%);
+            transition: width 220ms ease;
+        }
+
+        .feature-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: 8px;
+            font-size: 0.76rem;
+            color: var(--muted);
+        }
+
+        .feature-description {
+            margin: 8px 0 0;
+            font-size: 0.82rem;
+            line-height: 1.45;
+            color: #374151;
+        }
+
+        .feature-note {
+            margin-top: 10px;
+            font-size: 0.82rem;
+            line-height: 1.45;
+            color: var(--muted);
         }
 
         .score {
@@ -304,26 +348,9 @@
 
     <section class="layout">
         <article class="panel">
-            <h2>Value Distribution</h2>
-
-            <div class="control">
-                <div class="row"><span>Merit-Based Context</span><span id="meritVal">25.0%</span></div>
-                <input id="merit" class="locked-slider" type="range" min="0" max="100" step="0.1" value="25" aria-disabled="true" tabindex="-1" />
-            </div>
-            <div class="control">
-                <div class="row"><span>Family-Based Context</span><span id="familyVal">25.0%</span></div>
-                <input id="family" class="locked-slider" type="range" min="0" max="100" step="0.1" value="25" aria-disabled="true" tabindex="-1" />
-            </div>
-            <div class="control">
-                <div class="row"><span>School-Based Context</span><span id="schoolVal">25.0%</span></div>
-                <input id="school" class="locked-slider" type="range" min="0" max="100" step="0.1" value="25" aria-disabled="true" tabindex="-1" />
-            </div>
-            <div class="control">
-                <div class="row"><span>Community-Based Context</span><span id="communityVal">25.0%</span></div>
-                <input id="community" class="locked-slider" type="range" min="0" max="100" step="0.1" value="25" aria-disabled="true" tabindex="-1" />
-            </div>
-
-            <p class="small">These values are locked from your initializer + pairwise step to keep the race disparity score and stance explanation stable.<br>Merit emphasizes academic preparation and achievement.<br>Family emphasizes financial and first-generation context.<br>School emphasizes school resource and environment context.<br>Community emphasizes service, leadership, and broader social contribution.</p>
+            <h2>Regression Feature Bars</h2>
+            <div id="featureBars" class="feature-grid"></div>
+            <p class="feature-note">Each bar is proportional to the absolute ridge-regression coefficient for one feature. The sign of <strong>&beta;</strong> is shown in the label, while bar length shows that feature's share of the learned regression magnitude.<br>In simple terms: we look at how strongly each feature is connected to your admit/reject choices, adjust for how much that feature varies across applicants, and then convert those results into percentages that add up to 100%.</p>
         </article>
 
         <article class="panel">
@@ -446,22 +473,50 @@
         : "http://127.0.0.1:5050";
     console.log('[tradeoffGraph] API_BASE:', API_BASE);
 
-    const sliders = {
-        merit: document.getElementById("merit"),
-        family: document.getElementById("family"),
-        school: document.getElementById("school"),
-        community: document.getElementById("community"),
-    };
-    const labels = {
-        merit: document.getElementById("meritVal"),
-        family: document.getElementById("familyVal"),
-        school: document.getElementById("schoolVal"),
-        community: document.getElementById("communityVal"),
+    const FEATURE_ORDER = ["gpa", "test_scores", "research", "leadership", "first_gen", "adversity", "community_impact", "gender_equity", "efficiency"];
+    const FEATURE_DETAILS = {
+        gpa: {
+            label: "GPA",
+            description: "Academic preparation measured by sustained classroom performance and course grades.",
+        },
+        test_scores: {
+            label: "Test Scores",
+            description: "Standardized test performance used as a compact signal of academic readiness.",
+        },
+        research: {
+            label: "Research",
+            description: "Evidence of inquiry, analytical work, and long-form academic curiosity.",
+        },
+        leadership: {
+            label: "Leadership",
+            description: "Organizing others, taking initiative, and building sustained responsibility.",
+        },
+        first_gen: {
+            label: "First-Gen",
+            description: "First-generation college context and the navigation work that can come with it.",
+        },
+        adversity: {
+            label: "Adversity",
+            description: "Financial pressure, caregiving, work, access barriers, or other structural constraints.",
+        },
+        community_impact: {
+            label: "Community Impact",
+            description: "Service, civic contribution, and the broader effect of the applicant's work on others.",
+        },
+        gender_equity: {
+            label: "Gender Equity",
+            description: "Attention to representation, inclusion, and whether the cohort should be more balanced.",
+        },
+        efficiency: {
+            label: "Efficiency",
+            description: "How much review effort the profile may require and how streamlined the process is.",
+        },
     };
 
     let sessionId = null;
     const reflectionState = {};
-    let lockedState = { merit: 25, family: 25, school: 25, community: 25 };
+    let currentValueWeights = { merit: 25, family: 25, school: 25, community: 25 };
+    let currentFeatureBars = FEATURE_ORDER.map((feature) => ({ feature, coefficient: 0 }));
 
     function classifyBias(sensitivity) {
         if (sensitivity < 1.2) {
@@ -497,25 +552,58 @@
         return `The largest average gap was ${raceA} vs ${raceB}, with ${favored} favored on average.`;
     }
 
-    function buildWhereYouStandExplanation(topPair, score, weights) {
+    function formatFeatureWeightBreakdown(features) {
+        const items = Array.isArray(features) && features.length
+            ? features
+            : normalizeFeatureRegression({});
+        const totalInfluencePct = items.reduce((sum, item) => sum + (Number.isFinite(item.influencePct) ? Number(item.influencePct) : 0), 0);
+        const totalStandardized = items.reduce((sum, item) => sum + Math.abs(Number(item.standardizedEffect || 0)), 0);
+        const totalCoeffMagnitude = items.reduce((sum, item) => sum + Math.abs(Number(item.coefficient || 0)), 0);
+        const totalFeatureScoreMagnitude = items.reduce((sum, item) => sum + Math.abs(Number(item.featureScore || 0)), 0);
+        const fallbackShare = items.length > 0 ? 100 / items.length : 0;
+
+        return items
+            .map((item) => {
+                const standardized = Math.abs(Number(item.standardizedEffect || 0));
+                const coeffMagnitude = Math.abs(Number(item.coefficient || 0));
+                const featureScoreMagnitude = Math.abs(Number(item.featureScore || 0));
+                let share = fallbackShare;
+
+                if (totalInfluencePct > 0 && Number.isFinite(item.influencePct)) {
+                    share = Number(item.influencePct);
+                } else if (totalStandardized > 0) {
+                    share = (standardized / totalStandardized) * 100;
+                } else if (totalCoeffMagnitude > 0) {
+                    share = (coeffMagnitude / totalCoeffMagnitude) * 100;
+                } else if (totalFeatureScoreMagnitude > 0) {
+                    share = (featureScoreMagnitude / totalFeatureScoreMagnitude) * 100;
+                }
+
+                return `${item.label} ${share.toFixed(1)}%`;
+            })
+            .join(", ");
+    }
+
+    function buildWhereYouStandExplanation(topPair, score, weights, features) {
         const band = classifyBias(score);
-        const value = Number(score || 0).toFixed(1);
+        const value = Number(score || 0).toFixed(2);
         const favored = topPair && topPair.favoredRace ? String(topPair.favoredRace) : "one race";
         const races = topPair && Array.isArray(topPair.races) ? topPair.races : [];
         const other = races.length === 2 ? String(races[0] === favored ? races[1] : races[0]) : "the other race";
         const gapText = topPair && Array.isArray(topPair.races) && topPair.races.length === 2
             ? `The largest average gap was ${String(topPair.races[0])} vs ${String(topPair.races[1])}, with ${favored} favored on average.`
             : "The largest average gap was not stable enough to identify a single pair.";
+        const featureBreakdown = formatFeatureWeightBreakdown(features);
         return (
             `The Risk Band you fall in is the ${band}, because your Race disparity score is ${value}. ` +
             `${gapText} ` +
             `This means that your modeled decisions are more ${value}% more likely to favor admitting ${favored} applicants over ${other} applicants when they have similar profiles. ` +
-            `Your current weighting is Merit ${weights.merit.toFixed(1)}%, Family ${weights.family.toFixed(1)}%, School ${weights.school.toFixed(1)}%, and Community ${weights.community.toFixed(1)}%.`
+            `Current weighting across the nine regression features (share of absolute coefficient magnitude) is: ${featureBreakdown}.`
         );
     }
 
     function normalizeExplanationScore(text, score) {
-        const s = Number(score || 0).toFixed(1);
+        const s = Number(score || 0).toFixed(2);
         return String(text || "")
             .replace(/(Race disparity score is\s*)(\d+(?:\.\d+)?)/i, `$1${s}`)
             .replace(/(Race disparity score:\s*)(\d+(?:\.\d+)?)/i, `$1${s}`)
@@ -531,56 +619,108 @@
         band.textContent = classifyBias(bounded);
     }
 
-    function getState() {
-        return { ...lockedState };
-    }
+    function normalizeValueWeights(rawWeights) {
+        const source = rawWeights || {};
+        const weights = {
+            merit: Number(source.merit ?? source.equity ?? 25),
+            family: Number(source.family ?? source.individual ?? 25),
+            school: Number(source.school ?? source.readiness ?? 25),
+            community: Number(source.community ?? source.opportunity ?? 25),
+        };
 
-    function normalizeState(state) {
-        const total = state.merit + state.family + state.school + state.community;
+        const total = weights.merit + weights.family + weights.school + weights.community;
         if (total <= 0) {
             return { merit: 25, family: 25, school: 25, community: 25 };
         }
+
         return {
-            merit: (state.merit / total) * 100,
-            family: (state.family / total) * 100,
-            school: (state.school / total) * 100,
-            community: (state.community / total) * 100,
+            merit: (weights.merit / total) * 100,
+            family: (weights.family / total) * 100,
+            school: (weights.school / total) * 100,
+            community: (weights.community / total) * 100,
         };
     }
 
-    function rebalance(changedKey, nextValue) {
-        const state = getState();
-        const newValue = Math.max(0, Math.min(100, Number(nextValue || 0)));
-        state[changedKey] = newValue;
-        
-        const otherKeys = Object.keys(state).filter((k) => k !== changedKey);
-        const remaining = 100 - newValue;
-        const otherTotal = otherKeys.reduce((sum, key) => sum + state[key], 0);
+    function normalizeFeatureRegression(state) {
+        const regressionSource = (state && state.regressionDetails && state.regressionDetails.coefficients) || state.featureScores || {};
+        const influenceSource = (state && state.regressionDetails && state.regressionDetails.influencePct) || {};
+        const standardizedSource = (state && state.regressionDetails && state.regressionDetails.standardizedEffect) || {};
+        const featureScoreSource = (state && state.featureScores) || {};
 
-        if (otherTotal <= 0) {
-            const share = remaining / otherKeys.length;
-            otherKeys.forEach((key) => {
-                state[key] = share;
-            });
-        } else {
-            otherKeys.forEach((key) => {
-                state[key] = (state[key] / otherTotal) * remaining;
-            });
+        return FEATURE_ORDER.map((feature) => ({
+            feature,
+            label: FEATURE_DETAILS[feature].label,
+            description: FEATURE_DETAILS[feature].description,
+            coefficient: Number(regressionSource[feature] ?? 0),
+            influencePct: Number(influenceSource[feature]),
+            standardizedEffect: Number(standardizedSource[feature] ?? 0),
+            featureScore: Number(featureScoreSource[feature] ?? 0),
+        }));
+    }
+
+    function formatBetaValue(value) {
+        const numeric = Number(value || 0);
+        const abs = Math.abs(numeric);
+        if (abs > 0 && abs < 0.001) {
+            return numeric.toExponential(2);
         }
+        return numeric.toFixed(3);
+    }
 
-        const n = normalizeState(state);
-        // Update slider values and labels
-        Object.keys(n).forEach((k) => {
-            const normalized = n[k].toFixed(1);
-            sliders[k].value = normalized;
-            labels[k].textContent = `${normalized}%`;
-        });
-        console.log(`[rebalance] Changed ${changedKey} to ${newValue}, normalized state:`, n);
-        return n;
+    function renderFeatureBars(features) {
+        const host = document.getElementById("featureBars");
+        if (!host) return;
+
+        const items = Array.isArray(features) && features.length ? features : normalizeFeatureRegression({});
+        const totalInfluencePct = items.reduce((sum, item) => sum + (Number.isFinite(item.influencePct) ? Number(item.influencePct) : 0), 0);
+        const totalStandardized = items.reduce((sum, item) => sum + Math.abs(Number(item.standardizedEffect || 0)), 0);
+        const totalCoeffMagnitude = items.reduce((sum, item) => sum + Math.abs(Number(item.coefficient || 0)), 0);
+        const totalFeatureScoreMagnitude = items.reduce((sum, item) => sum + Math.abs(Number(item.featureScore || 0)), 0);
+        const fallbackShare = items.length > 0 ? 100 / items.length : 0;
+
+        host.innerHTML = items.map((item) => {
+            const standardized = Math.abs(Number(item.standardizedEffect || 0));
+            const coeffMagnitude = Math.abs(Number(item.coefficient || 0));
+            const featureScoreMagnitude = Math.abs(Number(item.featureScore || 0));
+            let share = fallbackShare;
+
+            if (totalInfluencePct > 0 && Number.isFinite(item.influencePct)) {
+                share = Number(item.influencePct);
+            } else if (totalStandardized > 0) {
+                share = (standardized / totalStandardized) * 100;
+            } else if (totalCoeffMagnitude > 0) {
+                share = (coeffMagnitude / totalCoeffMagnitude) * 100;
+            } else if (totalFeatureScoreMagnitude > 0) {
+                share = (featureScoreMagnitude / totalFeatureScoreMagnitude) * 100;
+            }
+
+            const sign = Number(item.coefficient || 0) >= 0 ? "+" : "-";
+            const betaText = `β ${sign}${formatBetaValue(Math.abs(Number(item.coefficient || 0)))}`;
+            return `
+                <div class="feature-card">
+                    <div class="feature-head">
+                        <span>${item.label}</span>
+                        <span class="feature-beta">${betaText}</span>
+                    </div>
+                    <div class="feature-meter" aria-hidden="true">
+                        <div class="feature-fill" style="width: ${share.toFixed(1)}%;"></div>
+                    </div>
+                    <div class="feature-meta">
+                        <span>${share.toFixed(1)}% influence</span>
+                        <span>${sign === "+" ? "positive" : "negative"}</span>
+                    </div>
+                    <p class="feature-description">${item.description}</p>
+                </div>
+            `;
+        }).join("");
+    }
+
+    function getState() {
+        return { ...currentValueWeights };
     }
 
     function toValueWeights(state) {
-        const n = normalizeState(state);
+        const n = normalizeValueWeights(state);
         return {
             merit: n.merit / 100,
             family: n.family / 100,
@@ -657,12 +797,12 @@
         
         const fallbackSensitivity = Number(data.sensitivity || 0);
         const rows = data.topDisparityPairs || [];
-        const currentWeights = normalizeState(state);
+        const currentWeights = getState();
 
         const tbody = document.getElementById("pairRows");
         tbody.innerHTML = "";
         if (!rows.length) {
-            const explanation = buildWhereYouStandExplanation(null, fallbackSensitivity, currentWeights);
+            const explanation = buildWhereYouStandExplanation(null, fallbackSensitivity, currentWeights, currentFeatureBars);
             document.getElementById("score").textContent = `${fallbackSensitivity.toFixed(2)} / 10`;
             document.getElementById("scoreNote").innerHTML = "Threshold guide: 0-1.2 Low, 1.2-2.8 Moderate, 2.8-4.5 Elevated, 4.5-10 High.<br>Higher score means larger model-based race-pair gaps in matched synthetic sets.";
             renderBiasMeter(fallbackSensitivity);
@@ -677,7 +817,7 @@
 
         const topRawScore = 100 * Number(rows[0].meanGap || 0);
         const topDisplayScore = rescaleDisparityScore(topRawScore);
-        const explanation = buildWhereYouStandExplanation(rows[0], topDisplayScore, currentWeights);
+        const explanation = buildWhereYouStandExplanation(rows[0], topDisplayScore, currentWeights, currentFeatureBars);
         document.getElementById("score").textContent = `${topDisplayScore.toFixed(2)} / 10`;
         document.getElementById("scoreNote").innerHTML = "Threshold guide: 0-1.2 Low, 1.2-2.8 Moderate, 2.8-4.5 Elevated, 4.5-10 High.<br>Higher score means larger model-based race-pair gaps in matched synthetic sets.";
         renderBiasMeter(topDisplayScore);
@@ -806,55 +946,31 @@
             const raw = sessionStorage.getItem("hybridSeedState");
             console.log("[hydrateSession] hybridSeedState from storage:", raw);
             if (!raw) {
-                console.log("[hydrateSession] No hybridSeedState found, using defaults 25/25/25/25");
-                rebalance("merit", 25);
+                console.log("[hydrateSession] No hybridSeedState found, using defaults");
+                currentValueWeights = normalizeValueWeights(null);
+                currentFeatureBars = normalizeFeatureRegression({});
+                renderFeatureBars(currentFeatureBars);
                 return;
             }
             const state = JSON.parse(raw);
             sessionId = state.sessionId || null;
             console.log("[hydrateSession] Loaded sessionId:", sessionId);
-            
-            if (state.seed && state.seed.valueWeights) {
-                const vw = state.seed.valueWeights;
-                console.log("[hydrateSession] Found valueWeights:", vw);
-                // Set internal slider values (not the DOM input.value yet)
-                const rawState = {
-                    merit: Number(vw.merit || 0.25) * 100,
-                    family: Number(vw.family || 0.25) * 100,
-                    school: Number(vw.school || 0.25) * 100,
-                    community: Number(vw.community || 0.25) * 100,
-                };
-                console.log("[hydrateSession] Raw percentages:", rawState);
-                
-                // Update slider DOM nodes directly (before rebalance)
-                sliders.merit.value = rawState.merit;
-                sliders.family.value = rawState.family;
-                sliders.school.value = rawState.school;
-                sliders.community.value = rawState.community;
-                
-                // Then normalize and update labels
-                const n = normalizeState(rawState);
-                lockedState = { ...n };
-                Object.keys(n).forEach((k) => {
-                    const normalized = n[k].toFixed(1);
-                    sliders[k].value = normalized;
-                    labels[k].textContent = `${normalized}%`;
-                });
-                console.log("[hydrateSession] Final normalized state:", n);
-            } else {
-                console.log("[hydrateSession] No valueWeights in seed, using defaults");
-                rebalance("merit", 25);
-                lockedState = { merit: 25, family: 25, school: 25, community: 25 };
-            }
+
+            const valueWeights = state.seed && state.seed.valueWeights ? state.seed.valueWeights : state.dimensionWeights;
+            currentValueWeights = normalizeValueWeights(valueWeights);
+            currentFeatureBars = normalizeFeatureRegression(state);
+            renderFeatureBars(currentFeatureBars);
+            console.log("[hydrateSession] Loaded value weights:", currentValueWeights);
         } catch (err) {
             console.error("[hydrateSession] Error:", err);
             sessionId = null;
-            rebalance("merit", 25);
-            lockedState = { merit: 25, family: 25, school: 25, community: 25 };
+            currentValueWeights = normalizeValueWeights(null);
+            currentFeatureBars = normalizeFeatureRegression({});
+            renderFeatureBars(currentFeatureBars);
         }
     }
 
-    console.log('[tradeoffGraph] Value sliders are locked for stable analysis');
+    console.log('[tradeoffGraph] Feature bars are locked to the regression output for stable analysis');
 
     document.getElementById("askBtn").addEventListener("click", askQuestion);
     document.getElementById("q").addEventListener("keydown", (event) => {
@@ -877,7 +993,7 @@
     hydrateSession();
     console.log('[tradeoffGraph] Session hydrated', {sessionId: sessionId ? sessionId.substring(0, 16) + '...' : 'none'});
     fetchDialogue();
-    console.log('[tradeoffGraph] Initial dialogue loaded with locked value distribution');
+    console.log('[tradeoffGraph] Initial dialogue loaded with locked regression feature breakdown');
 })();
 </script>
 </body>

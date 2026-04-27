@@ -477,12 +477,12 @@
             </section>
 
             <section id="questionsSection" class="card" style="margin-top: 18px; display: none;">
-                <h3>Adaptive Pairwise Clarifications</h3>
+                <h3>Pairwise Clarifications</h3>
                 <p class="sub">Answer each prompt to reduce ambiguity before seeding the graph.</p>
                 <div id="questionsHost"></div>
                 <div class="actions">
                     <button id="finalizeBtn" class="btn-primary">Submit Pairwise</button>
-                    <button id="openGraphBtn" class="btn-secondary" style="display:none;">Open Trade-Off Graph</button>
+                    <button id="openGraphBtn" class="btn-secondary" style="display:none;">View Your Race Disparity Score</button>
                 </div>
             </section>
 
@@ -1036,6 +1036,23 @@
 
     function renderComputationNarrative(data) {
         const weights = data.dimensionWeights || {};
+        const regressionDetails = data.regressionDetails || {};
+        const coefficients = regressionDetails.coefficients || {};
+        const featureOrder = ["gpa", "test_scores", "research", "leadership", "first_gen", "adversity", "community_impact", "gender_equity", "efficiency"];
+        const featureLabels = {
+            gpa: "GPA",
+            test_scores: "Test Scores",
+            research: "Research",
+            leadership: "Leadership",
+            first_gen: "First-Gen",
+            adversity: "Adversity",
+            community_impact: "Community Impact",
+            gender_equity: "Gender Equity",
+            efficiency: "Efficiency",
+        };
+        const featureSummary = featureOrder
+            .map((feature) => `${featureLabels[feature]} ${Math.abs(Number(coefficients[feature] || 0)).toFixed(3)}`)
+            .join(", ");
         const seed = data.seed || {};
         const raceSensitivity = typeof data.raceSensitivity === "number" ? data.raceSensitivity : null;
         const raceSensitivityText = raceSensitivity === null ? "n/a" : raceSensitivity.toFixed(2);
@@ -1046,11 +1063,10 @@
         traceExplain.innerHTML = `
             <strong>How your stance was computed:</strong><br>
             1) For each applicant, your Admit/Reject label became the target variable (1 or 0).<br>
-            2) We built feature vectors from both profile data and your written notes (GPA, tests, research, adversity, first-gen, leadership, community).<br>
+            2) We built feature vectors from both profile data and your written notes (GPA, tests, research, leadership, first-gen, adversity, community impact, gender equity, efficiency).<br>
             3) A regularized regression estimated how strongly each feature predicts your decisions.<br>
-                4) Coefficients were aggregated into four value dimensions and normalized:<br>
-                    Scores & Benchmarks=${(100 * (weights.readiness || 0)).toFixed(1)}%, Context & Obstacles=${(100 * (weights.opportunity || 0)).toFixed(1)}%, Outcome-Only Merit=${(100 * (weights.individual || 0)).toFixed(1)}%, Opportunity-Gap Aware=${(100 * (weights.equity || 0)).toFixed(1)}%.<br>
-            5) Graph placement used those dimensions:<br>
+                4) The graph now shows nine feature bars directly from the regression coefficients: ${featureSummary}.<br>
+            5) The four-way trade-off seed still powers the follow-up analysis flow:<br>
                     x = Outcome-Only Merit / (Outcome-Only Merit + Opportunity-Gap Aware) = ${x}<br>
                     y = Context & Obstacles / (Scores & Benchmarks + Context & Obstacles) = ${y}<br>
             ${raceSensitivity === null ? "" : `6) Race sensitivity was estimated with counterfactual swaps of race labels while holding all other applicant attributes fixed: ${raceSensitivityText} (0-10 scale).`}
@@ -1132,6 +1148,8 @@
                 sessionId,
                 seed: data.seed,
                 dimensionWeights: data.dimensionWeights,
+                featureScores: data.featureScores,
+                regressionDetails: data.regressionDetails,
                 explanation: data.explanation,
                 raceSensitivity: data.raceSensitivity,
                 counterfactualChanges: data.counterfactualChanges,
@@ -1141,7 +1159,7 @@
             sessionStorage.setItem("hybridSeedState", JSON.stringify(seedState));
 
             summaryBox.style.display = "block";
-            summaryHeadline.innerHTML = `<strong>Pairwise Submitted. Finalized Seed Ready.</strong><br><br>${data.explanation}<br><br>Your stance has now been updated with pairwise clarifications. Click "Open Trade-Off Graph" to continue.`;
+            summaryHeadline.innerHTML = `<strong>Pairwise Submitted. Finalized Seed Ready.</strong><br><br>${data.explanation}<br><br>Your stance has now been updated with pairwise clarifications. Click "View Your Race Disparity Score" to continue.`;
             vectorCode.innerHTML = `<p style="font-size: 0.85rem; color: #666; font-style: italic;">Vector prepared. Ready to explore the graph.</p>`;
             openGraphBtn.style.display = "inline-block";
             setStatus("Pairwise responses saved. You can now open the seeded graph.", false);
